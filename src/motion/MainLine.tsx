@@ -85,6 +85,9 @@ export function MainLine() {
   const svgRef = useRef<SVGSVGElement>(null);
   const sheathRef = useRef<SVGPathElement>(null);
   const energizedRef = useRef<SVGPathElement>(null);
+  const edgeRef = useRef<SVGPathElement>(null);
+  const glowRef = useRef<SVGPathElement>(null);
+  const strippedRef = useRef<SVGGElement>(null);
   const ringsRef = useRef<SVGGElement>(null);
   const dotRef = useRef<SVGCircleElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -173,26 +176,69 @@ export function MainLine() {
         svg.setAttribute('viewBox', `0 0 ${viewportWidth} ${documentHeight}`);
         sheath.setAttribute('d', d);
         energized.setAttribute('d', d);
+        edgeRef.current?.setAttribute('d', d);
+        glowRef.current?.setAttribute('d', d);
 
+        // Cable clips (obujmice) with a fixing screw at every bend — the
+        // cable is fastened to the wall, not floating (docs/DESIGN.md §2).
         rings.replaceChildren();
         for (let i = 1; i < points.length - 1; i += 1) {
-          const ring = document.createElementNS(SVG_NS, 'rect');
-          ring.setAttribute('x', String(points[i].x - 9));
-          ring.setAttribute('y', String(points[i].y - 5));
-          ring.setAttribute('width', '18');
-          ring.setAttribute('height', '10');
-          ring.setAttribute('rx', '3');
-          ring.setAttribute('fill', 'var(--color-surface)');
-          ring.setAttribute('stroke', 'var(--color-line)');
-          ring.setAttribute('stroke-width', '1.5');
-          rings.appendChild(ring);
+          const clip = document.createElementNS(SVG_NS, 'g');
+          clip.setAttribute('transform', `translate(${points[i].x} ${points[i].y})`);
+
+          const body = document.createElementNS(SVG_NS, 'rect');
+          body.setAttribute('x', '-11');
+          body.setAttribute('y', '-8');
+          body.setAttribute('width', '22');
+          body.setAttribute('height', '16');
+          body.setAttribute('rx', '4');
+          body.setAttribute('fill', '#2A2F3D');
+          body.setAttribute('stroke', '#0A0B10');
+          body.setAttribute('stroke-opacity', '0.6');
+          body.setAttribute('stroke-width', '1.25');
+          clip.appendChild(body);
+
+          const lit = document.createElementNS(SVG_NS, 'path');
+          lit.setAttribute('d', 'M -8 -6.5 H 8');
+          lit.setAttribute('stroke', '#FFFFFF');
+          lit.setAttribute('stroke-opacity', '0.3');
+          lit.setAttribute('stroke-width', '1');
+          lit.setAttribute('stroke-linecap', 'round');
+          clip.appendChild(lit);
+
+          const head = document.createElementNS(SVG_NS, 'circle');
+          head.setAttribute('r', '3.6');
+          head.setAttribute('fill', '#8A8F9C');
+          head.setAttribute('stroke', '#0A0B10');
+          head.setAttribute('stroke-opacity', '0.6');
+          head.setAttribute('stroke-width', '1');
+          clip.appendChild(head);
+
+          const slot = document.createElementNS(SVG_NS, 'path');
+          slot.setAttribute('d', 'M -2.4 -1 L 2.4 1');
+          slot.setAttribute('stroke', '#0A0B10');
+          slot.setAttribute('stroke-width', '1.4');
+          slot.setAttribute('stroke-linecap', 'round');
+          clip.appendChild(slot);
+
+          rings.appendChild(clip);
+        }
+
+        // The stripped end: the sheath stops short of the switch and three
+        // copper strands run the last few millimetres into it.
+        const stripped = strippedRef.current;
+        if (stripped) {
+          stripped.setAttribute('transform', `translate(${endX.toFixed(1)} ${endY.toFixed(1)})`);
         }
 
         length = energized.getTotalLength();
-        energized.style.strokeDasharray = `${length}`;
-        // Reduced motion has no scrub trigger at all (BRIEF §5.2), so the line
-        // is simply drawn in its end state — energized all the way.
-        energized.style.strokeDashoffset = reduced ? '0' : `${length}`;
+        for (const path of [energized, glowRef.current]) {
+          if (!path) continue;
+          path.style.strokeDasharray = `${length}`;
+          // Reduced motion has no scrub trigger at all (BRIEF §5.2), so the
+          // line is simply drawn in its end state — energized all the way.
+          path.style.strokeDashoffset = reduced ? '0' : `${length}`;
+        }
       };
 
       build();
@@ -281,7 +327,7 @@ export function MainLine() {
 
       if (energized) {
         tween = gsap.fromTo(
-          energized,
+          glowRef.current ? [energized, glowRef.current] : energized,
           { strokeDashoffset: () => length },
           { strokeDashoffset: 0, ease: 'none', scrollTrigger: scrollTriggerVars }
         );
@@ -341,35 +387,69 @@ export function MainLine() {
       <div ref={layerRef} className="jv-mainline-layer" aria-hidden="true">
         {desktop ? (
         <svg ref={svgRef} data-testid="mainline" className="jv-mainline" aria-hidden="true">
+          <defs>
+            <filter id="jv-mainline-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="4" />
+            </filter>
+          </defs>
+          {/* 10px PVC sheath */}
           <path
             ref={sheathRef}
             d="M 0 0"
             fill="none"
-            stroke="var(--color-line)"
-            strokeWidth="7"
+            stroke="#3A3F4E"
+            strokeWidth="10"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <path
-            d="M 0 0"
-            fill="none"
-            stroke="var(--color-volt-lo)"
-            strokeWidth="1"
-            strokeDasharray="2 16"
-            opacity="0.3"
-          />
+          {/* lighter top edge of the sheath, offset to the light side */}
+          <g transform="translate(-2.6 0)">
+            <path
+              ref={edgeRef}
+              d="M 0 0"
+              fill="none"
+              stroke="#565E70"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
           <g ref={ringsRef} />
+          {/* copper core, visible only where the cable is energized */}
+          <g className="jv-glow-lg">
+            <path
+              ref={glowRef}
+              d="M 0 0"
+              fill="none"
+              stroke="var(--color-volt-hi)"
+              strokeWidth="10"
+              strokeLinecap="round"
+              opacity="0.45"
+              filter="url(#jv-mainline-glow)"
+            />
+          </g>
           <path
             ref={energizedRef}
             data-testid="mainline-energized"
             d="M 0 0"
             fill="none"
             stroke="var(--color-volt)"
-            strokeWidth="2.5"
+            strokeWidth="3.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <circle ref={dotRef} r="4" cx="0" cy="0" fill="var(--color-volt-hi)" opacity="0" />
+          {/* stripped end at the switch: bare copper strands */}
+          <g ref={strippedRef}>
+            <path
+              d="M -14 -3.2 h 14 M -14 0 h 15 M -14 3.2 h 14"
+              fill="none"
+              stroke="#F6C08B"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+            <rect x="-20" y="-7" width="8" height="14" rx="2" fill="#2A2F3D" stroke="#0A0B10" strokeOpacity="0.6" strokeWidth="1" />
+          </g>
+          <circle ref={dotRef} r="4.5" cx="0" cy="0" fill="var(--color-volt-hi)" opacity="0" />
         </svg>
         ) : null}
       </div>

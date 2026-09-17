@@ -9,10 +9,16 @@ import { test, expect, type Page } from '@playwright/test';
  */
 
 const SHOTS = 'test-results/shots';
-const SEGMENTS = 16; // 5 steps x 3 beats + the closing beat
+/* The anatomy master timeline is 25 units long and split exactly the way
+ * src/sections/Anatomy.tsx splits it: 0–12 % taking the installation apart,
+ * 12–84 % the five fault/fix/flow steps (15 beats of 1.2 units), 84–100 %
+ * putting it back together. */
+const EXPLODE_END = 3 / 25;
+const BEAT = 1.2 / 25;
+const PART_COUNT = 14;
 const PERCENTS = [0, 0.2, 0.4, 0.6, 0.8, 1];
-/** Step shown at each of the percentages above (floor(pct * 16) / 3 + 1). */
-const EXPECTED_STEPS = ['1', '2', '3', '4', '5', '5'];
+/** Step shown at each of the percentages above. */
+const EXPECTED_STEPS = ['1', '1', '2', '4', '5', '5'];
 
 function viewportTag(page: Page): string {
   return String(page.viewportSize()?.width ?? 0);
@@ -77,9 +83,46 @@ async function scrollToPin(page: Page, fraction: number): Promise<void> {
   await settle(page);
 }
 
-/** Scroll to the middle of one beat: segment = step * 3 + beat index. */
-async function scrollToSegment(page: Page, segment: number): Promise<void> {
-  await scrollToPin(page, (segment + 0.5) / SEGMENTS);
+/** Scroll to the middle of one beat: beat = step * 3 + beat index. */
+async function scrollToSegment(page: Page, beat: number): Promise<void> {
+  await scrollToPin(page, EXPLODE_END + (beat + 0.5) * BEAT);
+}
+
+/**
+ * Every part's own transform matrix, read off the `transform` attribute GSAP
+ * writes on SVG targets. Assembled parts carry no transform at all, so a
+ * missing attribute is the identity.
+ */
+async function partTransforms(page: Page) {
+  return page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll<SVGGraphicsElement>(
+        '[data-testid="anatomy-stage"] [data-part-id]'
+      )
+    ).map((element) => {
+      const matrix = element.transform.baseVal.consolidate()?.matrix;
+      return {
+        id: element.getAttribute('data-part-id') ?? '',
+        a: matrix?.a ?? 1,
+        b: matrix?.b ?? 0,
+        c: matrix?.c ?? 0,
+        d: matrix?.d ?? 1,
+        e: matrix?.e ?? 0,
+        f: matrix?.f ?? 0,
+      };
+    })
+  );
+}
+
+function isIdentity(m: { a: number; b: number; c: number; d: number; e: number; f: number }): boolean {
+  return (
+    Math.abs(m.a - 1) < 0.005 &&
+    Math.abs(m.d - 1) < 0.005 &&
+    Math.abs(m.b) < 0.005 &&
+    Math.abs(m.c) < 0.005 &&
+    Math.abs(m.e) < 0.5 &&
+    Math.abs(m.f) < 0.5
+  );
 }
 
 async function scrollToContact(page: Page): Promise<void> {
@@ -129,6 +172,28 @@ test.describe('G3 motion — the scroll story plays', () => {
     await expect(section).toHaveAttribute('data-beat', 'final');
     await expect(page.getByTestId('anatomy-bulb')).toHaveAttribute('data-lit', 'true');
     await expect(page.getByTestId('anatomy-final')).toBeVisible();
+  });
+
+  test('the installation comes apart at once and goes back together exactly', async ({ page }) => {
+    const tag = viewportTag(page);
+    await openStory(page);
+
+    // 8 % of the pin — two thirds of the way through the explosion
+    await scrollToPin(page, 0.08);
+    const exploded = await partTransforms(page);
+    expect(exploded, 'the diorama should hold 14 addressable parts').toHaveLength(PART_COUNT);
+    const moved = exploded.filter((m) => !isIdentity(m));
+    expect(moved.length, `only ${moved.length} parts left their assembled place`).toBeGreaterThanOrEqual(10);
+    await expect(page.locator('[data-anatomy-parts]')).toHaveText(`Delovi: ${PART_COUNT}`);
+    await page.getByTestId('anatomy-stage').screenshot({ path: `${SHOTS}/anatomy-${tag}-8.png` });
+
+    // 100 % — every part back on its own axis, within half a user unit
+    await scrollToPin(page, 1);
+    const assembled = await partTransforms(page);
+    for (const matrix of assembled) {
+      expect(isIdentity(matrix), `${matrix.id} did not return to its assembled place`).toBe(true);
+    }
+    await expect(page.getByTestId('anatomy-bulb')).toHaveAttribute('data-lit', 'true');
   });
 
   test('step 3 shows the arc and sparks on the fault beat, tape on the fix beat', async ({

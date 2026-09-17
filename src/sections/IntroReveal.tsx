@@ -104,29 +104,28 @@ export function IntroReveal() {
         }}
       />
       <div className="relative flex flex-col items-center gap-4">
-        <svg width="84" height="104" viewBox="0 0 84 104" aria-hidden="true">
-          <circle data-halo="" cx="42" cy="40" r="30" fill="var(--color-volt)" opacity="0" />
-          <path
-            d="M42 8c-13 0-22 9.6-22 21.4 0 7.6 3.8 12.6 7.2 16.6 2.6 3 4.4 5.2 4.4 8.4v3.2h20.8v-3.2c0-3.2 1.8-5.4 4.4-8.4 3.4-4 7.2-9 7.2-16.6C64 17.6 55 8 42 8Z"
-            fill="none"
-            stroke="var(--color-line)"
-            strokeWidth="2"
-          />
-          <path
-            d="M31.6 66h20.8m-19.6 8h18.4m-16 8h13.6"
-            stroke="var(--color-line)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
+        <svg width="132" height="152" viewBox="0 0 132 152" aria-hidden="true">
+          {/* fuse-box door outline, drawn in the dark */}
+          <circle data-halo="" cx="66" cy="76" r="46" fill="var(--color-volt)" opacity="0" />
+          <rect x="10" y="10" width="112" height="132" rx="8" fill="none" stroke="var(--color-line)" strokeWidth="2" />
+          <rect x="22" y="24" width="88" height="104" rx="4" fill="none" stroke="var(--color-line)" strokeWidth="1.5" />
+          <path d="M 22 60 H 110" stroke="var(--color-line)" strokeWidth="2" />
+          {[34, 56, 78].map((x) => (
+            <rect key={x} x={x} y="36" width="18" height="48" rx="2" fill="none" stroke="var(--color-line)" strokeWidth="1.5" />
+          ))}
+          <path d="M 118 70 h 8 M 118 82 h 8" stroke="var(--color-line)" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="112" cy="76" r="3" fill="none" stroke="var(--color-line)" strokeWidth="1.5" />
+          {/* the filament that catches inside the middle module */}
           <path
             data-filament=""
-            d="M34 44c0-6 3-8 4-12s-2-6 4-6 3 4 4 6 4 6 4 12"
+            d="M 58 74 c 0 -7 4 -8 4 -12 s -2 -5 4 -5 s 4 3 4 5 s 4 5 4 12"
             fill="none"
             stroke="var(--color-volt-hi)"
-            strokeWidth="2.4"
+            strokeWidth="2.6"
             strokeLinecap="round"
             opacity="0.16"
           />
+          <path d="M 22 98 H 110" stroke="var(--color-line)" strokeWidth="1.5" strokeDasharray="4 8" />
         </svg>
         <span className="font-mono text-xs uppercase tracking-widest text-muted">
           {site.ui.loaderLabel}

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { mailtoHref, site } from '../config/site';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { Materials } from '../components/svg/Materials';
 import { CurrentPath } from '../motion/CurrentPath';
 import { Sparks } from '../motion/Sparks';
 import { EASE, ScrollTrigger, gsap, unveil, useGSAP, whenNear } from '../motion/motion';
@@ -113,7 +114,7 @@ export function Contact() {
         if (bulb) gsap.set(bulb, { opacity: 0.9 });
         if (filament) gsap.set(filament, { opacity: 1 });
         if (halo) gsap.set(halo, { opacity: 1 });
-        if (rocker) gsap.set(rocker, { y: 18 });
+        if (rocker) gsap.set(rocker, { scaleY: -1, transformOrigin: '50% 50%' });
         return undefined;
       }
 
@@ -143,7 +144,13 @@ export function Contact() {
 
         // beat 2 — the switch flips, with a "click" highlight
         if (rocker) {
-          timeline.to(rocker, { y: 18, duration: 0.18, ease: 'power3.in' }, 0.34);
+          // A rocker tips: `scaleY` 1 → -1 passes through the flat middle and
+          // lands with the lit edge at the bottom, exactly like the real part.
+          timeline.to(
+            rocker,
+            { scaleY: -1, duration: 0.2, ease: 'power3.in', transformOrigin: '50% 50%' },
+            0.34
+          );
         }
         timeline.add(() => setOn(!timeline.reversed()), 0.5);
         if (click) {
@@ -260,109 +267,125 @@ export function Contact() {
         <div
           data-contact-cone=""
           aria-hidden="true"
-          className="jv-cone -bottom-16 left-1/2 top-24 w-[130%] -translate-x-1/2"
+          className="jv-cone -bottom-16 left-1/2 top-28 w-[130%] -translate-x-1/2"
         />
 
         <div className="relative flex flex-col items-center">
-          <svg width="96" height="150" viewBox="0 0 96 150" aria-hidden="true" className="relative">
-            <line x1="48" y1="0" x2="48" y2="46" stroke="var(--color-line)" strokeWidth="2" />
-            <rect x="40" y="44" width="16" height="12" rx="3" fill="var(--color-line)" />
-            <circle data-contact-halo="" cx="48" cy="86" r="40" fill="var(--color-volt)" opacity="0" />
+          {/* E27 pendant: drop cable, ceiling rose, brass-threaded holder and
+              a glass envelope with a real filament. */}
+          <svg width="150" height="210" viewBox="0 0 150 210" aria-hidden="true" className="relative">
+            <Materials />
+            <line x1="75" y1="0" x2="75" y2="34" stroke="#3A3F4E" strokeWidth="5" strokeLinecap="round" />
+            <line x1="73.4" y1="2" x2="73.4" y2="32" stroke="#FFFFFF" strokeOpacity="0.22" strokeWidth="1.6" strokeLinecap="round" />
+            <rect x="63" y="30" width="24" height="16" rx="5" fill="url(#m-polymer-dark)" stroke="#0A0B10" strokeOpacity="0.6" strokeWidth="1.25" />
+            <circle data-contact-halo="" cx="75" cy="118" r="66" fill="url(#m-glow-volt)" opacity="0" />
+            {/* polymer skirt + E27 brass thread */}
+            <path d="M 54 46 H 96 L 92 70 H 58 Z" fill="url(#m-polymer-dark)" stroke="#0A0B10" strokeOpacity="0.6" strokeWidth="1.25" />
+            <path d="M 57 49 L 60 67" stroke="#FFFFFF" strokeOpacity="0.3" strokeWidth="1.4" strokeLinecap="round" />
+            <rect x="60" y="70" width="30" height="20" rx="2" fill="url(#m-brass)" stroke="#0A0B10" strokeOpacity="0.6" strokeWidth="1" />
+            <path d="M 60 75 H 90 M 60 80 H 90 M 60 85 H 90" stroke="#7A5C13" strokeOpacity="0.7" strokeWidth="1.6" />
+            <path d="M 62 72 H 88" stroke="#FFFFFF" strokeOpacity="0.45" strokeWidth="1.2" strokeLinecap="round" />
+            {/* glass envelope */}
             <path
-              d="M 30 88 a 18 18 0 1 1 36 0 c 0 7 -4 10 -6 14 l 0 6 l -24 0 l 0 -6 c -2 -4 -6 -7 -6 -14 Z"
-              fill="none"
-              stroke="var(--color-line)"
-              strokeWidth="2"
+              d="M 68 90 c 0 7 -22 12 -22 29 a 29 29 0 1 0 58 0 c 0 -17 -22 -22 -22 -29 Z"
+              fill="#11141D"
+              fillOpacity="0.65"
+              stroke="#5C616D"
+              strokeWidth="1.6"
             />
-            <path
-              d="M 39 112 h 18 M 41 118 h 14"
-              stroke="var(--color-line)"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
+            <path d="M 53 130 a 27 27 0 0 1 10 -19" fill="none" stroke="#FFFFFF" strokeOpacity="0.4" strokeWidth="2.4" strokeLinecap="round" />
             <path
               data-contact-filament=""
-              d="M 41 94 c 0 -6 3 -7 3 -11 s -2 -4 4 -4 s 4 3 4 4 s 3 5 3 11"
+              d="M 67 132 c 0 -8 5 -9 5 -14 s -3 -6 3 -6 s 3 4 3 6 s 5 6 5 14"
               fill="none"
-              stroke="var(--color-volt-hi)"
-              strokeWidth="2.2"
+              stroke="#FFE9B0"
+              strokeWidth="2.4"
               strokeLinecap="round"
               opacity="0.16"
             />
+            <path d="M 71 118 v -16 M 79 118 v -16" stroke="#8A8F9C" strokeWidth="1.6" strokeLinecap="round" />
             <circle
               data-testid="contact-bulb"
               data-lit="false"
-              cx="48"
-              cy="88"
-              r="19"
-              fill="var(--color-volt-hi)"
+              cx="75"
+              cy="122"
+              r="26"
+              fill="#FFD36A"
               opacity="0.08"
             />
           </svg>
 
           {/* The last stretch of cable into the switch — beat 1. Its box is
               `[data-mainline-end]`, so MainLine stops on its left edge and the
-              two read as one cable; 180px is the bulb SVG (150) + `mt-2` (8)
-              + half the switch (32), minus half of this box. */}
+              two read as one cable. */}
           <svg
             data-mainline-end=""
             aria-hidden="true"
             width="120"
             height="20"
             viewBox="0 0 120 20"
-            className="jv-contact-tail pointer-events-none absolute right-[calc(50%+20px)] top-[180px] z-10"
+            className="jv-contact-tail pointer-events-none absolute right-[calc(50%+46px)] top-[258px] z-10"
           >
-            <CurrentPath ref={tailRef} d="M 0 10 H 120" strokeWidth={7} coreWidth={2.5} />
+            <CurrentPath ref={tailRef} d="M 0 10 H 120" strokeWidth={10} coreWidth={3.2} />
           </svg>
 
+          {/* Dimensional wall switch with a real tilting rocker. */}
           <div
             data-testid="contact-switch"
             data-on="false"
             aria-hidden="true"
-            className="glass relative mt-2 h-16 w-11 overflow-hidden"
+            className="relative mt-3 block h-24 w-24"
           >
-            <span
-              data-contact-rocker=""
-              className="absolute inset-x-1.5 top-1.5 block h-6 rounded-sm bg-line"
-            />
-            <span
-              data-contact-click=""
-              className="absolute inset-0 block bg-volt-hi opacity-0"
-            />
+            <svg viewBox="0 0 96 96" className="h-full w-full">
+              <Materials />
+              <rect x="4" y="4" width="88" height="88" rx="10" fill="url(#m-polymer-light)" stroke="#0A0B10" strokeOpacity="0.6" strokeWidth="1.25" />
+              <path d="M 12 6 H 84 M 6 12 V 84" fill="none" stroke="#FFFFFF" strokeOpacity="0.65" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M 90 14 V 82 M 14 90 H 82" fill="none" stroke="#000000" strokeOpacity="0.3" strokeWidth="3.5" strokeLinecap="round" />
+              <rect x="22" y="18" width="52" height="60" rx="5" fill="#B6B4AC" />
+              <g data-contact-rocker="">
+                <rect x="24" y="20" width="48" height="56" rx="5" fill="url(#m-polymer-light)" stroke="#0A0B10" strokeOpacity="0.5" strokeWidth="1" />
+                <path d="M 29 25 H 67" stroke="#FFFFFF" strokeOpacity="0.95" strokeWidth="2.6" strokeLinecap="round" />
+                <path d="M 24 48 H 72" stroke="#8A8F9C" strokeWidth="1.4" />
+                <path d="M 29 71 H 67" stroke="#000000" strokeOpacity="0.22" strokeWidth="2.6" strokeLinecap="round" />
+              </g>
+              <g fill="none" stroke="#8A8F9C" strokeWidth="1.2">
+                <circle cx="48" cy="12" r="3" />
+                <circle cx="48" cy="84" r="3" />
+              </g>
+              <rect data-contact-click="" x="4" y="4" width="88" height="88" rx="10" fill="#FFD36A" opacity="0" />
+            </svg>
           </div>
         </div>
 
         <div
           data-testid="contact-card"
-          className="jv-veil glass relative z-10 mt-8 overflow-hidden p-6 text-center md:p-8"
+          className="jv-veil glass relative z-10 mt-10 overflow-hidden rounded-xl p-6 md:p-10"
         >
           <span data-contact-sweep="" aria-hidden="true" className="jv-sweep" />
 
-          <p className="font-mono text-xs uppercase tracking-widest text-arc">
-            {site.contact.eyebrow}
-          </p>
-          <h2 className="mt-2 font-display text-3xl font-bold text-text md:text-4xl">
-            {site.contact.title}
-          </h2>
-          <p className="mt-3 text-muted">{site.contact.lead}</p>
+          <p className="label-mono text-arc">{site.contact.eyebrow}</p>
+          <h2 className="display-lg mt-4 text-text">{site.contact.title}</h2>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">{site.contact.lead}</p>
+
+          <p className="label-mono mt-8">{site.contact.emailLabel}</p>
 
           <a
             ref={emailRef}
             href={mailtoHref}
             data-testid="contact-email"
             style={{ overflowWrap: 'anywhere' }}
-            className="focus-ring mt-6 block font-display text-2xl font-semibold text-volt md:text-3xl"
+            className="focus-ring mt-1 block font-display text-2xl font-extrabold text-volt md:text-4xl"
           >
             {site.email}
           </a>
 
-          <div className="relative mt-4 flex flex-col items-center gap-2">
+          <div className="relative mt-5 flex flex-col items-start gap-2">
             <Sparks
               ref={sparksRef}
               count={10}
               spread={20}
               size={64}
-              className="absolute left-1/2 top-0 -translate-x-1/2"
+              className="absolute left-8 top-0 -translate-x-1/2"
             />
             <button
               type="button"
@@ -370,7 +393,7 @@ export function Contact() {
               onClick={() => {
                 void handleCopy();
               }}
-              className="focus-ring relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-4 py-2 text-sm text-text"
+              className="btn btn-outline focus-ring relative text-sm"
             >
               {site.contact.copy}
             </button>

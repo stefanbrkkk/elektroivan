@@ -1,46 +1,67 @@
 import { useMemo, useRef } from 'react';
 import { site } from '../config/site';
+import { SectionHeader } from '../components/SectionHeader';
 import { useLenis } from '../components/SmoothScroll';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { ScrollTrigger, gsap, unveil, useGSAP, whenNear } from '../motion/motion';
 import { flickerFault } from '../motion/flicker';
 import type { CurrentPathHandle, SparksHandle } from '../motion/types';
-import { CircuitSvg } from './anatomy/CircuitSvg';
-import { getCircuitLayout } from './anatomy/layout';
+import { Diorama } from './anatomy/Diorama';
+import { PART_COUNT, getDiorama } from './anatomy/diorama';
 
 const BEATS = ['fault', 'fix', 'flow'] as const;
-/** Samples taken along the rendered circuit path to locate each component. */
-const SAMPLES = 120;
+
+/* ------------------------------------------------------------- the clock --
+ * One master timeline, 25 units long, split exactly the way docs/DESIGN.md
+ * §3.5 asks for: 0–12 % the whole installation explodes at once, 12–84 % the
+ * five fault/fix/flow steps, 84–100 % everything snaps back at once.
+ * `e2e/motion.spec.ts` derives its scroll fractions from the same numbers. */
+const EXPLODE = 3;
+const BEAT = 1.2;
+const BEAT_COUNT = 15;
+const ASSEMBLE = 4;
+const TOTAL = EXPLODE + BEAT * BEAT_COUNT + ASSEMBLE;
+const ASSEMBLE_START = EXPLODE + BEAT * BEAT_COUNT;
+/** Opacity of the parts the current step is not about. */
+const DIM = 0.55;
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
 
 /**
- * "Anatomy of a fault" (docs/BRIEF.md §6.5) — the centrepiece.
+ * "Anatomy of a fault" (docs/BRIEF.md §6.5, docs/DESIGN.md §3.5) — the
+ * centrepiece.
  *
- * A pinned section scrubbed through five steps of three beats each
- * (fault → fix → flow) plus a closing beat where the whole circuit is lit.
- * Every visual is driven by one master timeline, so scrolling backwards
+ * A pinned cutaway diorama of a whole installation: enclosure, door, DIN rail,
+ * breaker, RCD, N/PE bars, a three-conductor cable, a Schuko socket in three
+ * parts, a wall switch and an E27 pendant — fourteen parts. Scrubbing the pin
+ * blows the installation apart **at once** along per-part axes (with arc
+ * leader lines and part numbers drawing in), plays the five fault → fix → flow
+ * steps with the focused part brought forward and glowing while the rest stay
+ * exploded and dimmed, then snaps everything back **at once**, closes the
+ * door, runs the current through and lights the bulb.
+ *
+ * Every visual is driven by that one timeline, so scrolling backwards
  * un-fixes the fault exactly the way it was fixed; step/beat state is written
- * straight to the DOM (`data-step`, `data-beat`, counter text, dots) from the
+ * straight to the DOM (`data-step`, `data-beat`, counters, dots) from the
  * timeline's own update, never through React state.
  *
- * Reduced motion gets no pin and no scrub: all five steps, the connected
- * circuit and the lit bulb are simply there.
+ * Reduced motion gets no pin and no scrub: the assembled, lit diorama and all
+ * five step cards are simply there.
  */
 export function Anatomy() {
   const steps = site.anatomy.steps;
-  const segments = steps.length * 3 + 1;
   const reduced = usePrefersReducedMotion();
   const desktop = useMediaQuery('(min-width: 1024px)');
   const lenis = useLenis();
-  const layout = useMemo(() => getCircuitLayout(!desktop), [desktop]);
+  const layout = useMemo(() => getDiorama(!desktop), [desktop]);
 
   const rootRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef<HTMLParagraphElement>(null);
+  const partsRef = useRef<HTMLParagraphElement>(null);
   const triggerRef = useRef<ScrollTrigger | null>(null);
   const currentRef = useRef<CurrentPathHandle>(null);
   const sparks = {
@@ -57,8 +78,8 @@ export function Anatomy() {
         ?.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
       return;
     }
-    const top =
-      trigger.start + (trigger.end - trigger.start) * ((index * 3 + 0.45) / segments);
+    const at = (EXPLODE + (index * 3 + 0.45) * BEAT) / TOTAL;
+    const top = trigger.start + (trigger.end - trigger.start) * at;
     if (lenis) {
       lenis.scrollTo(top, { immediate: reduced });
     } else {
@@ -72,22 +93,19 @@ export function Anatomy() {
       const pin = pinRef.current;
       if (!root || !pin) return undefined;
 
+      const q = <T extends Element>(selector: string) => root.querySelector<T>(selector);
       const cards = gsap.utils.toArray<HTMLElement>('[data-testid="anatomy-card"]', root);
       const dots = gsap.utils.toArray<HTMLElement>('[data-anatomy-dot]', root);
-      const finalText = root.querySelector<HTMLElement>('[data-testid="anatomy-final"]');
-      const bulb = root.querySelector<SVGCircleElement>('[data-testid="anatomy-bulb"]');
-      const bulbGlow = root.querySelector<SVGCircleElement>('[data-node="bulb"] [data-part="bulb-glow"]');
-      const filament = root.querySelector<SVGPathElement>('[data-node="bulb"] [data-part="filament"]');
-      const arc = root.querySelector<SVGGElement>('[data-testid="anatomy-arc"]');
-      const tape = root.querySelector<SVGGElement>('[data-testid="anatomy-tape"]');
+      const finalText = q<HTMLElement>('[data-testid="anatomy-final"]');
+      const bulb = q<SVGCircleElement>('[data-testid="anatomy-bulb"]');
+      const bulbGlow = q<SVGCircleElement>('[data-part-id="bulb"] [data-part="bulb-glow"]');
+      const filament = q<SVGPathElement>('[data-part-id="bulb"] [data-part="filament"]');
+      const arc = q<SVGGElement>('[data-testid="anatomy-arc"]');
+      const tape = q<SVGGElement>('[data-testid="anatomy-tape"]');
       // The two elements the live fault loops own outright. Nothing on the
-      // scrubbed master ever touches them (docs/reports/review-1.md minor 17).
-      const arcFlickerEl = root.querySelector<SVGPolylineElement>(
-        '[data-testid="anatomy-arc"] [data-part="arc-flicker"]'
-      );
-      const bulbFlickerEl = root.querySelector<SVGCircleElement>(
-        '[data-node="bulb"] [data-part="bulb-flicker"]'
-      );
+      // scrubbed master ever touches them.
+      const arcFlickerEl = q<SVGPolylineElement>('[data-testid="anatomy-arc"] [data-part="arc-flicker"]');
+      const bulbFlickerEl = q<SVGCircleElement>('[data-part-id="bulb"] [data-part="bulb-flicker"]');
 
       unveil(cards, finalText);
 
@@ -99,14 +117,8 @@ export function Anatomy() {
       }
 
       // ---------------------------------------------------------------- eager
-      // Only what the first paint and the reserved height depend on. The five
-      // step cards share one box (`.jv-card-stack`), so they must be dimmed
-      // before anything else runs.
       gsap.set(cards, { opacity: 0, y: 10 });
-      gsap.set(cards[0], { opacity: 1, y: 0 });
       if (finalText) gsap.set(finalText, { opacity: 0, y: 10 });
-      // Safety net: if the near-viewport build never runs (no IntersectionObserver,
-      // a stalled tab), nothing may stay hidden — show every card statically.
       let sceneBuilt = false;
       const safetyNet = gsap.delayedCall(4, () => {
         if (sceneBuilt) return;
@@ -114,26 +126,22 @@ export function Anatomy() {
         if (finalText) gsap.set(finalText, { opacity: 1, y: 0 });
       });
 
-      // The spine: one empty tween fixes the master's duration at `segments`
-      // whether or not the scene has been built yet, so the pin distance and
-      // the segment→progress mapping never change (no reflow, no refresh, and
-      // `data-step`/`data-beat` are already correct while scrolling in).
+      // The spine fixes the master's duration whether or not the scene has been
+      // built yet, so the pin distance and the time→state mapping never change.
       const master = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
-      master.to({}, { duration: segments }, 0);
+      master.to({}, { duration: TOTAL }, 0);
 
       // --- live (non-scrubbed) loops, owned by the beat state -----------
       let arcFlicker: gsap.core.Timeline | null = null;
       let bulbFlicker: gsap.core.Timeline | null = null;
-      let lastSegment = -1;
+      let lastSegment = -2;
+      let lastParts = -1;
 
       const stopLoops = () => {
         arcFlicker?.kill();
         arcFlicker = null;
         bulbFlicker?.kill();
         bulbFlicker = null;
-        // Park what the loops own. A plain style write, not `gsap.set`: these
-        // two elements have exactly one owner, so there is nothing to read
-        // back and no tug of war with the master to resolve.
         if (arcFlickerEl) arcFlickerEl.style.opacity = '1';
         if (bulbFlickerEl) bulbFlickerEl.style.opacity = '0';
         sparks.cable.current?.stop();
@@ -141,14 +149,25 @@ export function Anatomy() {
       };
 
       const applyState = () => {
-        const raw = Math.floor(master.progress() * segments);
-        const segment = gsap.utils.clamp(0, segments - 1, raw);
+        const t = master.progress() * TOTAL;
+
+        // "Delovi: 14" counts up over the first part of the explosion, so the
+        // number is already complete while the parts are still separating.
+        const shown = Math.round(gsap.utils.clamp(0, 1, t / (EXPLODE * 0.4)) * PART_COUNT);
+        if (shown !== lastParts && partsRef.current) {
+          lastParts = shown;
+          partsRef.current.textContent = `Delovi: ${pad(shown)}`;
+        }
+
+        // -1 = taking apart, 0…14 = the five steps, 15 = putting back together
+        const segment =
+          t < EXPLODE ? -1 : t >= ASSEMBLE_START ? BEAT_COUNT : Math.floor((t - EXPLODE) / BEAT);
         if (segment === lastSegment) return;
         lastSegment = segment;
 
-        const isFinal = segment >= segments - 1;
-        const step = isFinal ? steps.length - 1 : Math.min(steps.length - 1, Math.floor(segment / 3));
-        const beat = isFinal ? 'final' : BEATS[segment % 3];
+        const isFinal = segment >= BEAT_COUNT;
+        const step = segment < 0 ? 0 : isFinal ? steps.length - 1 : Math.floor(segment / 3);
+        const beat = segment < 0 ? 'fault' : isFinal ? 'final' : BEATS[segment % 3];
 
         root.dataset.step = String(step + 1);
         root.dataset.beat = beat;
@@ -164,24 +183,20 @@ export function Anatomy() {
           else dot.removeAttribute('aria-current');
         });
         if (bulb) {
-          bulb.dataset.lit = step === steps.length - 1 && beat !== 'fault' ? 'true' : 'false';
+          bulb.dataset.lit = segment >= BEAT_COUNT - 1 ? 'true' : 'false';
         }
 
         stopLoops();
+        if (segment < 0 || isFinal) return;
 
-        if (beat === 'fault' && steps[step].id === 'breaker') {
-          sparks.breaker.current?.burst(8);
-        }
-        if (beat === 'fault' && steps[step].id === 'cable') {
+        const id = steps[step].id;
+        if (beat === 'fault' && id === 'breaker') sparks.breaker.current?.burst(8);
+        if (beat === 'fault' && id === 'cable') {
           sparks.cable.current?.start();
-          if (arcFlickerEl) {
-            arcFlicker = flickerFault(arcFlickerEl, { dip: 0.22, interval: 0.9 });
-          }
+          if (arcFlickerEl) arcFlicker = flickerFault(arcFlickerEl, { dip: 0.22, interval: 0.9 });
         }
-        if (beat === 'fault' && steps[step].id === 'socket') {
-          sparks.socket.current?.start();
-        }
-        if (beat === 'fault' && steps[step].id === 'lamp' && bulbFlickerEl) {
+        if (beat === 'fault' && id === 'socket') sparks.socket.current?.start();
+        if (beat === 'fault' && id === 'lamp' && bulbFlickerEl) {
           bulbFlicker = flickerFault(bulbFlickerEl, { dip: 0.12, interval: 1.2 });
         }
       };
@@ -191,218 +206,247 @@ export function Anatomy() {
       const trigger = ScrollTrigger.create({
         trigger: pin,
         start: 'top top',
-        end: () => `+=${Math.round((desktop ? 5 : 2.8) * window.innerHeight)}`,
+        // Desktop 600vh of scroll over the pin, phones stay under 300vh
+        // (BRIEF §7). Every tween value below is in SVG user units, so a
+        // resize never invalidates the animation — only this end distance.
+        end: () => `+=${Math.round((desktop ? 6 : 2.9) * window.innerHeight)}`,
         pin,
         anticipatePin: 1,
         scrub: 0.5,
-        invalidateOnRefresh: true,
         animation: master,
       });
       triggerRef.current = trigger;
       applyState();
 
       // ----------------------------------------------------------------- lazy
-      // Everything below measures the circuit SVG or creates a tween on it.
-      // Doing it inside the hydration commit was the single biggest chunk of
-      // the ~440ms boot task (BRIEF §7: build heavy scenes near the viewport;
-      // the pin spacer above already reserves the height, so CLS stays 0).
       const buildScene = () => {
         sceneBuilt = true;
         safetyNet.kill();
-        // Where each component sits along the circuit path, measured from the
-        // rendered path so the two layouts need no hand-kept numbers.
-        const corePath = root.querySelector<SVGPathElement>(
-          '[data-testid="anatomy-stage"] path[data-core]'
-        );
-        const samples: { x: number; y: number }[] = [];
-        if (corePath) {
-          const total = corePath.getTotalLength();
-          for (let i = 0; i <= SAMPLES; i += 1) {
-            const point = corePath.getPointAtLength((total * i) / SAMPLES);
-            samples.push({ x: point.x, y: point.y });
-          }
-        }
-        const progressAt = (x: number, y: number) => {
-          let best = 0;
-          let bestDistance = Number.POSITIVE_INFINITY;
-          samples.forEach((point, index) => {
-            const distance = (point.x - x) ** 2 + (point.y - y) ** 2;
-            if (distance < bestDistance) {
-              bestDistance = distance;
-              best = index / (samples.length - 1);
-            }
-          });
-          return best;
-        };
-        const nodeProgress = layout.nodes.map((item) => progressAt(item.x, item.y));
 
-        const node = (id: string) => root.querySelector<SVGGElement>(`[data-node="${id}"]`);
+        const inner = (id: string) => q<SVGGElement>(`[data-part-id="${id}"]`);
         const part = (id: string, name: string) =>
-          root.querySelector<SVGElement>(`[data-node="${id}"] [data-part="${name}"]`);
-
-        // Baseline transforms: GSAP takes over the `transform` attribute the
-        // layout put on every component group.
-        for (const item of layout.nodes) {
-          const element = node(item.id);
-          if (!element) continue;
-          gsap.set(element, {
-            x: item.x,
-            y: item.y,
-            transformOrigin: '50% 50%',
-            opacity: 0.5,
-          });
-        }
+          q<SVGElement>(`[data-part-id="${id}"] [data-part="${name}"]`);
+        const leaders = q<SVGGElement>('[data-leaders]');
+        const leaderLines = gsap.utils.toArray<SVGPathElement>('[data-leaders] [data-leader-line]', root);
+        const leaderLabels = gsap.utils.toArray<SVGGElement>('[data-leaders] [data-leader-label]', root);
 
         if (arc) gsap.set(arc, { autoAlpha: 0 });
         if (tape) gsap.set(tape, { autoAlpha: 0 });
         currentRef.current?.setProgress(0);
 
-        layout.nodes.forEach((item, index) => {
-          const group = node(item.id);
+        // ---------------------------------------------- 0–12 %: all at once
+        layout.parts.forEach((p, index) => {
+          const group = inner(p.id);
           if (!group) return;
-          const start = index * 3;
-          const halo = part(item.id, 'halo');
-          const previous = index === 0 ? 0 : nodeProgress[index - 1];
-
-          // --- beat 1: the fault shows itself -----------------------------
           master.to(
             group,
             {
-              x: item.x + layout.lift.x,
-              y: item.y + layout.lift.y,
-              scale: 1.08,
-              opacity: 1,
-              duration: 0.45,
+              x: p.ex,
+              y: p.ey,
+              rotation: p.rot,
+              scale: p.sc,
+              duration: EXPLODE * 0.78,
               ease: 'power2.out',
+              transformOrigin: '50% 50%',
             },
-            start
+            index * 0.012
           );
-          if (halo) master.to(halo, { opacity: 0.55, duration: 0.45 }, start);
-          if (index > 0) master.to(cards[index - 1], { opacity: 0, y: -8, duration: 0.3 }, start);
+          master.to(group, { opacity: DIM, duration: EXPLODE * 0.3 }, EXPLODE * 0.66);
+        });
+
+        if (leaders) master.to(leaders, { opacity: 1, duration: 0.3 }, EXPLODE * 0.15);
+        if (leaderLines.length) {
+          master.fromTo(
+            leaderLines,
+            { drawSVG: '0% 0%' },
+            { drawSVG: '0% 100%', duration: EXPLODE * 0.4, stagger: 0.02, ease: 'power1.out' },
+            EXPLODE * 0.2
+          );
+        }
+        if (leaderLabels.length) {
+          master.to(leaderLabels, { opacity: 1, duration: 0.3, stagger: 0.02 }, EXPLODE * 0.45);
+        }
+        // Once the taking-apart beat is over the callouts step back so the
+        // five fault/fix steps read against a calm drawing.
+        if (leaders) master.to(leaders, { opacity: 0.45, duration: 0.5 }, EXPLODE);
+        master.fromTo(cards[0], { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, EXPLODE * 0.6);
+
+        // ------------------------------------------ 12–84 %: the five steps
+        let flowFrom = 0;
+        steps.forEach((step, index) => {
+          const p = layout.parts.find((item) => item.id === layout.focus[step.id]);
+          const group = p ? inner(p.id) : null;
+          const halo = p ? part(p.id, 'halo') : null;
+          const start = EXPLODE + index * 3 * BEAT;
+
+          // the focused part comes forward and lights up
+          if (p && group) {
+            master.to(
+              group,
+              {
+                x: p.ex * 0.3,
+                y: p.ey * 0.3,
+                rotation: p.rot * 0.3,
+                scale: p.sc * 1.16,
+                opacity: 1,
+                duration: BEAT * 0.55,
+                ease: 'power2.out',
+              },
+              start
+            );
+          }
+          if (halo) master.to(halo, { opacity: 0.6, duration: BEAT * 0.55 }, start);
+          if (index > 0) master.to(cards[index - 1], { opacity: 0, y: -8, duration: BEAT * 0.3 }, start);
           master.fromTo(
             cards[index],
             { opacity: 0, y: 10 },
-            { opacity: 1, y: 0, duration: 0.4 },
-            start + 0.15
+            { opacity: 1, y: 0, duration: BEAT * 0.4 },
+            start + BEAT * 0.15
           );
 
-          if (item.id === 'breaker') {
-            const lever = part('breaker', 'lever');
-            const flash = part('breaker', 'flash');
-            const indicator = part('breaker', 'indicator');
-            if (lever) master.to(lever, { y: 17, rotation: 7, duration: 0.3, ease: 'power3.in' }, start + 0.1);
+          const fix = start + BEAT;
+
+          if (step.id === 'breaker') {
+            const lever = part('mcb', 'lever');
+            const flash = part('mcb', 'flash');
+            const indicator = part('mcb', 'indicator');
+            if (lever) master.to(lever, { y: 26, duration: BEAT * 0.3, ease: 'power3.in' }, start + 0.15);
             if (flash) {
               master
-                .to(flash, { opacity: 0.4, duration: 0.12 }, start + 0.32)
-                .to(flash, { opacity: 0, duration: 0.24 }, start + 0.44);
+                .to(flash, { opacity: 0.4, duration: 0.12 }, start + 0.42)
+                .to(flash, { opacity: 0, duration: 0.26 }, start + 0.54);
             }
-            if (lever) master.to(lever, { y: 0, rotation: 0, duration: 0.45, ease: 'back.out(1.6)' }, start + 1.05);
-            if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 1.4);
+            if (lever) master.to(lever, { y: 0, duration: BEAT * 0.45, ease: 'back.out(1.8)' }, fix + 0.1);
+            if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, fix + 0.4);
           }
 
-          if (item.id === 'rcd') {
+          if (step.id === 'rcd') {
             const lever = part('rcd', 'lever');
             const test = part('rcd', 'test');
             const indicator = part('rcd', 'indicator');
             const ok = part('rcd', 'ok');
-            if (lever) master.to(lever, { y: 19, duration: 0.28, ease: 'power3.in' }, start + 0.1);
-            if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 0.3);
+            if (lever) master.to(lever, { y: 26, duration: BEAT * 0.28, ease: 'power3.in' }, start + 0.15);
+            if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 0.4);
             if (test) {
               master
-                .to(test, { scale: 0.72, duration: 0.2, transformOrigin: '50% 50%' }, start + 1.05)
-                .to(test, { scale: 1, duration: 0.3 }, start + 1.3);
+                .to(test, { scale: 0.76, duration: 0.2, transformOrigin: '50% 50%' }, fix + 0.1)
+                .to(test, { scale: 1, duration: 0.3 }, fix + 0.35);
             }
-            if (indicator) master.to(indicator, { opacity: 0, duration: 0.25 }, start + 1.3);
-            if (lever) master.to(lever, { y: 0, duration: 0.45, ease: 'back.out(1.6)' }, start + 1.35);
-            if (ok) master.to(ok, { opacity: 1, duration: 0.3 }, start + 1.6);
+            if (indicator) master.to(indicator, { opacity: 0, duration: 0.25 }, fix + 0.35);
+            if (lever) master.to(lever, { y: 0, duration: BEAT * 0.45, ease: 'back.out(1.8)' }, fix + 0.4);
+            if (ok) master.to(ok, { opacity: 1, duration: 0.3 }, fix + 0.7);
           }
 
-          if (item.id === 'cable') {
-            const left = group.querySelector<SVGPathElement>('path[stroke-width="11"]');
+          if (step.id === 'cable') {
             const copper = part('cable', 'copper');
             const clip = part('cable', 'tape-clip');
-            if (left) master.to(left, { x: -5, duration: 0.3 }, start + 0.1);
-            if (copper) master.to(copper, { opacity: 1, duration: 0.3 }, start + 0.15);
-            if (arc) master.to(arc, { autoAlpha: 1, duration: 0.2 }, start + 0.2);
-            // fix: four turns of insulating tape, then the arc dies
-            if (arc) master.to(arc, { autoAlpha: 0, duration: 0.2 }, start + 1.05);
-            if (tape) master.to(tape, { autoAlpha: 1, duration: 0.15 }, start + 1.05);
+            if (copper) master.to(copper, { opacity: 1, duration: 0.3 }, start + 0.2);
+            if (arc) master.to(arc, { autoAlpha: 1, duration: 0.2 }, start + 0.25);
+            if (arc) master.to(arc, { autoAlpha: 0, duration: 0.2 }, fix + 0.05);
+            if (tape) master.to(tape, { autoAlpha: 1, duration: 0.15 }, fix + 0.05);
             if (clip) {
               master.fromTo(
                 clip,
-                { attr: { width: 0, x: -26 } },
-                { attr: { width: 52 }, duration: 0.6, ease: 'steps(4)' },
-                start + 1.1
+                { attr: { width: 0, x: -32 } },
+                { attr: { width: 64 }, duration: BEAT * 0.55, ease: 'steps(4)' },
+                fix + 0.1
               );
             }
-            if (copper) master.to(copper, { opacity: 0, duration: 0.25 }, start + 1.5);
-            if (left) master.to(left, { x: 0, duration: 0.3 }, start + 1.5);
+            if (copper) master.to(copper, { opacity: 0, duration: 0.25 }, fix + 0.55);
           }
 
-          if (item.id === 'socket') {
-            const soot = part('socket', 'soot');
-            const oldSocket = part('socket', 'old-socket');
-            const newSocket = part('socket', 'new-socket');
-            const sweep = part('socket', 'sweep');
-            if (soot) master.to(soot, { opacity: 0.45, duration: 0.35 }, start + 0.15);
-            if (oldSocket) master.to(oldSocket, { x: -74, opacity: 0, duration: 0.45, ease: 'power2.in' }, start + 1.05);
+          if (step.id === 'socket') {
+            const soot = part('socket-cover', 'soot');
+            const oldSocket = part('socket-insert', 'old-socket');
+            const newSocket = part('socket-insert', 'new-socket');
+            const sweep = part('socket-cover', 'sweep');
+            if (soot) master.to(soot, { opacity: 0.5, duration: 0.35 }, start + 0.2);
+            if (oldSocket) {
+              master.to(oldSocket, { x: 86, opacity: 0, duration: BEAT * 0.45, ease: 'power2.in' }, fix + 0.05);
+            }
             if (newSocket) {
               master.fromTo(
                 newSocket,
-                { x: 74, opacity: 0 },
-                { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' },
-                start + 1.35
+                { x: -86, opacity: 0 },
+                { x: 0, opacity: 1, duration: BEAT * 0.5, ease: 'power3.out' },
+                fix + 0.4
               );
             }
+            if (soot) master.to(soot, { opacity: 0, duration: 0.3 }, fix + 0.5);
             if (sweep) {
-              master.fromTo(
-                sweep,
-                { x: 0, opacity: 0.28 },
-                { x: 68, opacity: 0, duration: 0.5 },
-                start + 1.7
-              );
+              master.fromTo(sweep, { x: 0, opacity: 0.3 }, { x: 92, opacity: 0, duration: BEAT * 0.5 }, fix + 0.75);
             }
           }
 
-          if (item.id === 'lamp') {
-            const rocker = part('lamp', 'rocker');
-            if (rocker) master.to(rocker, { y: 7, duration: 0.25 }, start + 0.1);
-            if (rocker) master.to(rocker, { y: -7, duration: 0.35, ease: 'back.out(2)' }, start + 1.05);
+          if (step.id === 'lamp') {
+            const rocker = part('switch', 'rocker');
+            if (rocker) master.to(rocker, { y: 8, duration: 0.25 }, start + 0.15);
+            if (rocker) master.to(rocker, { y: -8, duration: 0.35, ease: 'back.out(2)' }, fix + 0.1);
             // calm ignition — no flicker, the fault is fixed
-            if (bulb) master.to(bulb, { opacity: 0.85, duration: 0.55, ease: 'power2.out' }, start + 1.2);
-            if (filament) master.to(filament, { opacity: 1, duration: 0.5 }, start + 1.2);
-            if (bulbGlow) master.to(bulbGlow, { opacity: 0.75, duration: 0.6 }, start + 1.3);
+            if (bulb) master.to(bulb, { opacity: 0.85, duration: BEAT * 0.5, ease: 'power2.out' }, fix + 0.2);
+            if (filament) master.to(filament, { opacity: 1, duration: BEAT * 0.45 }, fix + 0.2);
+            if (bulbGlow) master.to(bulbGlow, { opacity: 0.8, duration: BEAT * 0.55 }, fix + 0.3);
           }
 
-          // --- beat 3: the current moves on -------------------------------
-          const flow = currentRef.current?.timeline(previous, nodeProgress[index], { duration: 0.85 });
-          if (flow) master.add(flow, start + 2);
+          // --- beat 3: the current moves on -----------------------------
+          const flowAt = start + 2 * BEAT;
+          const flow = currentRef.current?.timeline(flowFrom, layout.flow[index], {
+            duration: BEAT * 0.8,
+          });
+          if (flow) master.add(flow, flowAt);
+          flowFrom = layout.flow[index];
+          if (p && group) {
+            master.to(
+              group,
+              {
+                x: p.ex,
+                y: p.ey,
+                rotation: p.rot,
+                scale: p.sc,
+                opacity: DIM,
+                duration: BEAT * 0.6,
+                ease: 'power2.inOut',
+              },
+              flowAt
+            );
+          }
+          if (halo) master.to(halo, { opacity: 0, duration: BEAT * 0.5 }, flowAt);
+        });
+
+        // --------------------------------------- 84–100 %: back together
+        if (leaderLabels.length) {
+          master.to(leaderLabels, { opacity: 0, duration: ASSEMBLE * 0.2 }, ASSEMBLE_START);
+        }
+        if (leaders) master.to(leaders, { opacity: 0, duration: ASSEMBLE * 0.3 }, ASSEMBLE_START);
+        layout.parts.forEach((p, index) => {
+          const group = inner(p.id);
+          if (!group) return;
           master.to(
             group,
-            { x: item.x, y: item.y, scale: 1, opacity: 0.85, duration: 0.5, ease: 'power2.inOut' },
-            start + 2
+            {
+              x: 0,
+              y: 0,
+              // back.out overshoots past zero and settles — the parts read as
+              // being screwed down rather than dropped into place.
+              rotation: 0,
+              scale: 1,
+              opacity: 1,
+              duration: ASSEMBLE * 0.55,
+              ease: 'back.out(1.4)',
+            },
+            ASSEMBLE_START + index * 0.04
           );
-          if (halo) master.to(halo, { opacity: 0, duration: 0.5 }, start + 2);
         });
 
-        // --- closing beat: everything lit ---------------------------------
-        const finalStart = steps.length * 3;
-        const tail = currentRef.current?.timeline(nodeProgress[nodeProgress.length - 1], 1, {
-          duration: 0.6,
-        });
-        if (tail) master.add(tail, finalStart);
-        for (const item of layout.nodes) {
-          const group = node(item.id);
-          if (group) master.to(group, { opacity: 1, duration: 0.5 }, finalStart);
-        }
-        const bulbNode = root.querySelector<SVGGElement>('[data-node="bulb"]');
-        if (bulbNode) master.to(bulbNode, { opacity: 1, duration: 0.5 }, finalStart);
-        if (bulbGlow) master.to(bulbGlow, { opacity: 1, duration: 0.6 }, finalStart + 0.2);
-        if (finalText) master.to(finalText, { opacity: 1, y: 0, duration: 0.5 }, finalStart + 0.3);
+        const tail = currentRef.current?.timeline(layout.flow[4], 1, { duration: ASSEMBLE * 0.5 });
+        if (tail) master.add(tail, ASSEMBLE_START + 0.4);
+        if (bulb) master.to(bulb, { opacity: 0.95, duration: ASSEMBLE * 0.4 }, ASSEMBLE_START + 1.2);
+        if (bulbGlow) master.to(bulbGlow, { opacity: 1, duration: ASSEMBLE * 0.45 }, ASSEMBLE_START + 1.4);
+        if (finalText) master.to(finalText, { opacity: 1, y: 0, duration: 0.5 }, ASSEMBLE_START + 1.6);
 
-        // Catch up with wherever the pin already is, then re-derive the state.
         if (trigger.progress > 0) master.progress(trigger.progress);
-        lastSegment = -1;
+        lastSegment = -2;
+        lastParts = -1;
         applyState();
       };
 
@@ -423,19 +467,9 @@ export function Anatomy() {
 
   const counter = `${pad(reduced ? steps.length : 1)}/${pad(steps.length)}`;
 
-  const header = (
-    <div className="mx-auto max-w-6xl px-4 md:px-6">
-      <p className="font-mono text-xs uppercase tracking-widest text-arc">{site.anatomy.eyebrow}</p>
-      <h2 className="mt-2 font-display text-3xl font-bold text-text md:text-5xl">
-        {site.anatomy.title}
-      </h2>
-      <p className="mt-4 max-w-2xl text-muted">{site.anatomy.intro}</p>
-    </div>
-  );
-
   const controls = (
     <div className="flex items-center justify-between gap-4">
-      <p ref={counterRef} data-testid="anatomy-counter" className="font-mono text-sm text-muted">
+      <p ref={counterRef} data-testid="anatomy-counter" className="font-mono text-sm text-arc">
         {counter}
       </p>
       <div className="flex gap-0.5">
@@ -467,15 +501,11 @@ export function Anatomy() {
       data-testid="anatomy-card"
       data-step={index + 1}
       data-active={(reduced ? true : index === 0) ? 'true' : 'false'}
-      className="jv-card jv-veil glass p-4 md:p-5"
+      className="jv-card jv-veil card p-5 md:p-6"
     >
-      <p className="font-mono text-[10px] uppercase tracking-widest text-arc">
-        {pad(index + 1)}
-      </p>
-      <h3 className="mt-1 font-display text-base font-semibold text-text md:text-xl">
-        {step.name}
-      </h3>
-      <dl className="mt-2 grid gap-1.5 text-[13px] leading-snug md:text-sm">
+      <p className="font-mono text-xs font-semibold tracking-widest text-arc">{pad(index + 1)}</p>
+      <h3 className="display-md mt-1 text-text">{step.name}</h3>
+      <dl className="mt-3 grid gap-2 text-[13px] leading-snug md:text-sm">
         <div>
           <dt className="mr-1 inline font-mono text-[10px] uppercase tracking-wide text-muted">
             {site.anatomy.labels.problem}:
@@ -499,12 +529,29 @@ export function Anatomy() {
   ));
 
   const finalLine = (
-    <p
-      data-testid="anatomy-final"
-      className="jv-veil glass px-4 py-2 text-center font-display text-base font-semibold text-volt md:text-lg"
-    >
+    <p data-testid="anatomy-final" className="jv-veil serif-accent text-center text-2xl text-arc md:text-3xl">
       {site.anatomy.finalText}
     </p>
+  );
+
+  const partsTag = (
+    <p
+      ref={partsRef}
+      data-anatomy-parts=""
+      className="label-mono pointer-events-none absolute right-6 top-2 z-10 whitespace-nowrap"
+    >
+      Delovi: {pad(PART_COUNT)}
+    </p>
+  );
+
+  const stage = (
+    <Diorama
+      layout={layout}
+      lit={reduced}
+      sparks={sparks}
+      current={currentRef}
+      label={site.anatomy.title}
+    />
   );
 
   return (
@@ -516,18 +563,21 @@ export function Anatomy() {
       data-beat={reduced ? 'final' : 'fault'}
       className="section relative"
     >
-      {header}
+      <div className="container-x">
+        <SectionHeader
+          sheet={3}
+          eyebrow={site.anatomy.eyebrow}
+          title={site.anatomy.title}
+          intro={site.anatomy.intro}
+        />
+      </div>
 
       {reduced ? (
-        <div className="mx-auto mt-10 grid max-w-6xl gap-8 px-4 md:px-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <div data-testid="anatomy-stage" className="glass dot-grid flex items-center justify-center p-4">
-            <CircuitSvg
-              layout={layout}
-              lit
-              sparks={sparks}
-              current={currentRef}
-              label={site.anatomy.finalText}
-            />
+        <div className="container-x mt-10 grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <div data-testid="anatomy-stage" className="corner-marks relative flex items-center justify-center p-4">
+            <span className="corner-marks__b" aria-hidden="true" />
+            {partsTag}
+            {stage}
           </div>
           <div className="flex flex-col gap-4">
             {controls}
@@ -538,26 +588,22 @@ export function Anatomy() {
       ) : (
         <div
           ref={pinRef}
-          className="min-h-app mx-auto mt-8 flex max-w-6xl flex-col justify-center gap-3 px-4 py-4 md:px-6 lg:grid lg:max-w-7xl lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-center lg:gap-12"
+          className="min-h-app container-x mt-8 flex flex-col justify-center gap-3 py-4 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-center lg:gap-10"
         >
           <div
             data-testid="anatomy-stage"
-            className="glass dot-grid relative flex items-center justify-center p-3 md:p-5 lg:min-h-[54svh]"
+            className="corner-marks relative flex items-center justify-center p-2 md:p-4 lg:min-h-[58svh]"
           >
-            <CircuitSvg
-              layout={layout}
-              lit={false}
-              sparks={sparks}
-              current={currentRef}
-              label={site.anatomy.title}
-            />
-            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center">
+            <span className="corner-marks__b" aria-hidden="true" />
+            {partsTag}
+            {stage}
+            <div className="pointer-events-none absolute inset-x-3 bottom-1 flex justify-center">
               {finalLine}
             </div>
           </div>
           <div className="flex flex-col gap-3">
             {controls}
-            <div className="jv-card-stack min-h-[190px] md:min-h-[230px]">{stepCards}</div>
+            <div className="jv-card-stack min-h-[208px] md:min-h-[240px]">{stepCards}</div>
           </div>
         </div>
       )}
