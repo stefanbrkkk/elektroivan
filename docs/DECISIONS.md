@@ -59,3 +59,8 @@ All versions confirmed current (2026-09-17). Key findings:
 | @playwright/test 1.63.0 | ⚠ | Version OK, but expects Chromium revision 1243; preinstalled is 1194 — use `executablePath` override |
 | lighthouse 13.4.1 | ✓ | Mobile: `--form-factor=mobile`; CHROME_PATH env var for binary path |
 | Node 22.22.2 | ✓ | Supports .mts natively since 22.18; no tsx needed |
+
+## Phase 1 → 2 — supervisor
+- Custom agent types from `.claude/agents/*.md` are not hot-loaded into a running session; the same roles are run through `general-purpose` with an explicit `model` override (haiku/sonnet/opus) and the role file read first. The agent files stay in the repo for future sessions.
+- Phase 2 ordering: copywriter (site.ts values only) runs concurrently with motion-engineer (disjoint files; the schema is frozen, only values change). Builder phase 2 starts when the copywriter finishes, so at most two agents run at once.
+- Remote repository had no branches before the first push; the work branch is the only branch, so a pull request needs a base branch (e.g. `main`) that only the repository owner should create.
