@@ -1,0 +1,9 @@
+node_modules
+dist
+.vercel
+test-results
+playwright-report
+.lighthouse
+*.local
+.DS_Store
+npm-debug.log*
