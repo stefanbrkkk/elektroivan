@@ -28,7 +28,7 @@ Sections 3–11 live inside `<main id="sadrzaj">` (skip link target). Order in `
 - Testimonials: `testimonial-card`, `testimonials-toggle`. FAQ: `faq-trigger` (×6 buttons), `faq-panel` (×6).
 - Contact: `contact-switch` (`data-on="true|false"`, carries `data-mainline-end`), `contact-bulb` (`data-lit`), `contact-card`, `contact-email` (mailto), `contact-copy`, `contact-toast` (`aria-live`, text “Kopirano ✓”), `contact-hours`, `contact-phone` (only when phone set).
 - Footer: `back-to-top`. Main line: `mainline` (svg, ≥1024px) with `mainline-energized` path; `progress-bar` (<1024px).
-- Root `<html>` gets `data-intro="skip"` from an inline script when reduced motion or `sessionStorage.jovanIntroSeen`; CSS hides the overlay then. `<body>` gets `data-pointer="fine|coarse"` and `data-motion="full|reduced"` from the same script (client-only hints; React must not rely on them during render).
+- Root `<html>` gets `data-intro="skip"` from an inline script when reduced motion or `sessionStorage.jovanIntroSeen`; CSS hides the overlay then. `<html>` also gets `data-pointer="fine|coarse"` and `data-motion="full|reduced"` from the same inline script (client-only hints; React must not rely on them during render).
 
 ## `src/config/site.ts` schema (types exported; copywriter edits values only)
 ```ts
