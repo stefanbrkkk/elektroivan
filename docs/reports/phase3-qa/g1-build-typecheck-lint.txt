@@ -1,0 +1,15 @@
+## Gate G1: Build, Typecheck, Lint
+
+**Typecheck**: Exit code 0 (PASS)
+- Errors: 0
+- Warnings: 0
+
+**Lint**: Exit code 0 (PASS)
+- Errors: 0
+- Warnings: 0
+
+**Build**: Exit code 0 (PASS)
+- Errors: 0
+- Warnings: 0 (no Vite chunk-size warnings)
+
+**G1 Result: PASS**

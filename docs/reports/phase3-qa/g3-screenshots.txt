@@ -1,0 +1,29 @@
+## Gate G3: Motion Screenshots
+
+**Required Screenshots Status**:
+
+Present:
+  ✓ anatomy-1440-0.png
+  ✓ anatomy-1440-20.png
+  ✓ anatomy-1440-40.png
+  ✓ anatomy-1440-60.png
+  ✓ anatomy-1440-80.png
+  ✓ anatomy-1440-100.png
+  ✓ anatomy-1440-step3-fault.png
+  ✓ anatomy-1440-step3-fix.png
+  ✓ anatomy-390-step3.png
+  ✓ finale-1440-lit.png
+  ✓ finale-390-lit.png
+  ✓ hero-1440.png
+
+Missing:
+  ✗ services-1440.png
+
+**Full Directory Listing**:
+Total 54 files in test-results/shots/:
+  - anatomy frames: -0, -20, -40, -60, -80, -100 for 1440/390/768/360px
+  - anatomy step3: -fault, -fix variants for each viewport
+  - finale: -lit, -reduced for each viewport
+  - hero: .png and -reduced for each viewport
+
+**G3 Result: FAIL** (missing services-1440.png)

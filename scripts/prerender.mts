@@ -1,7 +1,7 @@
 // Build-time prerender: renders the app to static HTML and injects SEO
 // metadata, so the shipped dist/index.html is fully correct without
 // requiring JavaScript to run first (docs/BRIEF.md §7).
-import { readFile, writeFile, rm } from 'node:fs/promises';
+import { readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -62,7 +62,13 @@ async function main(): Promise<void> {
   if (site.siteUrl) jsonLd.url = site.siteUrl;
   if (site.phone) jsonLd.telephone = site.phone;
 
+  // Preload the hashed display-font asset Vite emitted (latin subset), so the preload matches the CSS URL.
+  const assetFiles = await readdir(path.join(rootDir, 'dist', 'assets'));
+  const displayFont = assetFiles.find((f) => /^bricolage-grotesque-latin-wght-normal-.*\.woff2$/.test(f));
   const headTags = [
+    displayFont
+      ? `<link rel="preload" as="font" type="font/woff2" href="/assets/${displayFont}" crossorigin>`
+      : '',
     `<meta name="description" content="${escapeAttr(site.seo.description)}">`,
     canonicalUrl ? `<link rel="canonical" href="${escapeAttr(canonicalUrl)}">` : '',
     `<meta property="og:type" content="website">`,

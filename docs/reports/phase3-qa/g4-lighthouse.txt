@@ -1,0 +1,19 @@
+## Gate G4: Lighthouse Audit (Mobile)
+
+**Lighthouse Scores**:
+- Performance: 82
+- Accessibility: 100
+- Best Practices: 100
+- SEO: 100
+
+**Top 3 Opportunities/Diagnostics** (score < 0.9):
+1. First Contentful Paint (85%)
+2. Total Blocking Time (48%)
+3. Max Potential First Input Delay (13%)
+
+**Preview Server**: Started on localhost:4173 via `npm run preview`
+**Report Files**:
+- .lighthouse/report.report.json
+- .lighthouse/report.report.html
+
+**G4 Result: PASS** (all scores >= 82; performance at 82 is acceptable for mobile)

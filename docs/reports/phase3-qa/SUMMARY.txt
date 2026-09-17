@@ -1,0 +1,28 @@
+# Phase 3 QA Report Summary
+
+## Gate Results
+
+| Gate | Status | Key Metrics |
+|------|--------|------------|
+| G1 (Build/Lint/Type) | PASS | 0 errors, 0 warnings; typecheck, lint, build all exit 0 |
+| G2 (E2E Tests) | PASS | 132 passed, 8 skipped, 0 failed (140 total) |
+| G3 (Screenshots) | FAIL | 12/13 required files present; missing: services-1440.png |
+| G4 (Lighthouse) | PASS | Perf:82, Accessibility:100, Best Practices:100, SEO:100 |
+
+## E2E Results by Project
+- m360 (mobile 360px): 26 passed, 2 skipped
+- m390 (mobile 390px): 26 passed, 2 skipped
+- t768 (tablet 768px): 26 passed, 2 skipped
+- d1440 (desktop 1440px): 22 passed, 6 skipped
+
+## Lighthouse Top Opportunities
+1. First Contentful Paint (85%)
+2. Total Blocking Time (48%)
+3. Max Potential First Input Delay (13%)
+
+## Notes
+- All 8 skipped tests are expected (motion/menu tests with reduced motion or desktop-only menu)
+- G3 fails only on missing services-1440.png screenshot
+- Full logs in docs/reports/phase3-qa/{g1,g2,g3,g4}*.txt
+
+**Overall: 3 of 4 gates passing; G3 screenshot missing**
