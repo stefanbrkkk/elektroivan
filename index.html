@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sr-Latn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0A0B10" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/bricolage-grotesque-latin-wght-normal.woff2"
+      crossorigin
+    />
+    <script>
+      (function () {
+        try {
+          var reduced =
+            window.matchMedia &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          var fine =
+            window.matchMedia &&
+            window.matchMedia('(pointer: fine)').matches &&
+            !window.matchMedia('(hover: none)').matches;
+          var seen = false;
+          try {
+            seen = !!sessionStorage.getItem('jovanIntroSeen');
+          } catch (storageError) {
+            seen = false;
+          }
+          var html = document.documentElement;
+          html.setAttribute('data-motion', reduced ? 'reduced' : 'full');
+          html.setAttribute('data-pointer', fine ? 'fine' : 'coarse');
+          if (reduced || seen) {
+            html.setAttribute('data-intro', 'skip');
+          }
+        } catch (scriptError) {
+          /* ignore: attributes stay unset, CSS falls back to defaults */
+        }
+      })();
+    </script>
+    <title>Električar Jovan | Beograd</title>
+    <!--app-head-->
+  </head>
+  <body>
+    <div id="root"><!--app-html--></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

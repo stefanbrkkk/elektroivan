@@ -30,6 +30,19 @@
 | typescript-eslint | 8.70.0 |
 | vercel (CLI, not installed) | 59.20.0 |
 
+## Phase 1 — builder
+- `gsap/all` has no type declarations for gsap 3.15 (implicit `any`, `TS7016`); `src/motion/motion.ts` imports `gsap`, `gsap/ScrollTrigger`, `gsap/SplitText`, `gsap/DrawSVGPlugin`, `gsap/MotionPathPlugin` from their individual subpaths instead — typechecks cleanly under `strict`.
+- `gsap.*` ambient types (`gsap.TweenTarget`, `gsap.core.Timeline`, …) come from gsap's global namespace declaration merged in from `gsap-core.d.ts`; `src/motion/types.ts` uses them with no import (an `import type { gsap } from './motion'` shadows the global and is reported unused by `noUnusedLocals`).
+- `@eslint/js` added as an explicit devDependency (10.0.1) — required directly by the flat `eslint.config.js` but not shipped as a transitive dependency of `eslint` itself.
+- `@types/node`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`, `globals` were not pinned in the table above; resolved to each package's latest version compatible with eslint 10 / React 19 (22.20.3, 7.1.1, 0.5.7, 17.12.0 respectively).
+- Trust's and Testimonials' marquee pause/play toggle buttons both reuse `site.testimonials.pause`/`.play` ("Pauziraj/Pokreni traku") — the `SiteConfig` schema (frozen by CONTRACT) has no separate label for Trust's marquee, and the wording is generic enough ("traku" = the strip) to fit both.
+- The one-time `img, svg { display: block }` reset originally added to `global.css` was removed entirely rather than kept behind `@layer base`: on this Tailwind v4.3.3 + `@tailwindcss/vite` pipeline a custom rule duplicating a selector Tailwind's own preflight already owns is not reliably reordered relative to generated utilities (verified empirically — it silently defeated `hidden`/`lg:block`/`lg:hidden` on `<svg>`), even wrapped in `@layer`. Tailwind's preflight already sets `display:block` on `img`/`svg`/etc. correctly, so the duplicate was both redundant and buggy. The rest of the resets/utility-like classes stay grouped in `@layer base`/`@layer components` (confirmed safe: `.glass`'s `border-radius` correctly loses to a `rounded-full` utility on the same element).
+- `.focus-ring` is scoped to `:focus-visible` (`.focus-ring:focus-visible { outline: … }`), not a permanently-applied outline — the earlier unscoped version showed a permanent ring around every link/button.
+- Anatomy's five step-navigation dots keep a small 10×10px visual dot but size the actual `<button>` hit area to 44×44px (`h-11 w-11`, inner `<span>` for the dot), per BRIEF §7's ≥44px touch-target rule (also flagged by Lighthouse's `target-size` audit).
+- `og-build.mts` and `og.html` render via `page.goto('file://<temp-file>')` rather than `page.setContent()` — Chromium blocks `file://` subresources (fonts, the favicon image) from a document that isn't itself `file://`-origin, which would otherwise silently fall back to system fonts / a broken icon.
+- Lighthouse 13.4.1 ships a 5th "Agentic Browsing" category by default; `scripts/lighthouse.mts` explicitly filters to the four BRIEF §7 categories (performance, accessibility, best-practices, seo) rather than printing whatever the installed version happens to report.
+- The display-font woff2 preloaded in `index.html` is committed as a static file at `public/fonts/bricolage-grotesque-latin-wght-normal.woff2` (copied once from the installed Fontsource package) — simplest way to get a stable `/fonts/...` URL for the `<link rel="preload">` without a custom Vite plugin.
+
 ## Scout findings (phase 0)
 
 All versions confirmed current (2026-09-17). Key findings:

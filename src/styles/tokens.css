@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Colors — exact values from docs/CONTRACT.md */
+  --color-bg: #0a0b10;
+  --color-surface: #13151e;
+  --color-line: #262b3b;
+  --color-text: #f3f1ea;
+  --color-muted: #9aa0b4;
+  --color-volt: #ffb92b;
+  --color-volt-hi: #ffd36a;
+  --color-volt-lo: #f59e0b;
+  --color-arc: #8fd8ff;
+  --color-fault: #ff6a3d;
+
+  /* Typography */
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, serif;
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  /* Shape */
+  --radius-md: 8px;
+
+  /* Motion easing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}

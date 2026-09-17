@@ -1,0 +1,221 @@
+@import './tokens.css';
+
+@import '@fontsource-variable/bricolage-grotesque/wght.css';
+@import '@fontsource/instrument-serif/latin-400-italic.css';
+@import '@fontsource/instrument-serif/latin-ext-400-italic.css';
+@import '@fontsource-variable/geist/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+
+:root {
+  color-scheme: dark;
+}
+
+/* Base resets live in Tailwind's own `base` layer (declared by the
+   `tailwindcss` import above) so that utility classes — e.g. `hidden` or
+   `lg:block` on an <svg> — always win over these defaults, regardless of
+   source order. Un-layered rules would otherwise always beat layered
+   Tailwind utilities per the CSS cascade-layers spec. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background-color: var(--color-bg);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100svh;
+    min-height: 100dvh;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* Global focus visibility — arc color, matches CONTRACT tokens */
+  :focus-visible {
+    outline: 2px solid var(--color-arc);
+    outline-offset: 2px;
+  }
+}
+
+/* Reusable named classes, in the same `components` layer Tailwind uses for
+   its own component-level styles — so a utility class can still override
+   any of these when applied alongside one. */
+@layer components {
+  /* Skip link: off-screen until focused, then jumps above everything else */
+  .skip-link {
+    position: fixed;
+    top: -100%;
+    left: 1rem;
+    z-index: 60;
+    border-radius: var(--radius-md);
+    background-color: var(--color-volt);
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--color-bg);
+  }
+
+  .skip-link:focus {
+    top: 1rem;
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--color-arc);
+    outline-offset: 2px;
+  }
+
+  /* Glass surface: translucent panel with a soft top-light border */
+  .glass {
+    background-color: color-mix(in srgb, var(--color-surface) 60%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+    border-radius: var(--radius-md);
+  }
+
+  /* Perforated-board dot texture, ~6% opacity */
+  .dot-grid {
+    background-image: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-text) 6%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 24px 24px;
+  }
+
+  /* Fine film grain — desktop only, kept off small/low-power screens */
+  .grain {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    display: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  @media (min-width: 1024px) {
+    .grain::after {
+      display: block;
+    }
+  }
+
+  /* Small mono pill marking demo data (stats, testimonials) as non-real */
+  .badge-demo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    padding: 0.125rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* Soft amber glow behind key elements (buttons, bulb, focal art) */
+  .glow-amber {
+    box-shadow: 0 0 80px 12px color-mix(in srgb, var(--color-volt) 22%, transparent);
+  }
+
+  /* Standard section rhythm: 80px mobile / 120px desktop */
+  .section {
+    padding-block: 5rem;
+  }
+
+  @media (min-width: 768px) {
+    .section {
+      padding-block: 8rem;
+    }
+  }
+
+  /* Loader stays mounted but hidden once a visitor has already seen it,
+     or when reduced motion is requested (see inline script in index.html). */
+  html[data-intro='skip'] [data-testid='section-intro'] {
+    display: none;
+  }
+
+  /* iOS safe-area helpers */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .min-h-app {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
+  /* Seamless CSS marquee: track holds the list twice, scrolls exactly one
+     copy's width. Used by Trust's service strip and Testimonials' rows. */
+  .marquee-track {
+    animation: marquee-scroll 28s linear infinite;
+  }
+
+  .marquee-track-reverse {
+    animation: marquee-scroll-reverse 32s linear infinite;
+  }
+
+  .marquee-paused {
+    animation-play-state: paused;
+  }
+}
+
+/* Keyframes are global declarations, not cascade-layered rules — no @layer needed. */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-scroll-reverse {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Full reduced-motion baseline: no CSS-driven animation or transition.
+   `!important` here is intentional and wins regardless of layering. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
