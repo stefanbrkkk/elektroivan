@@ -9,7 +9,7 @@ rich cards with large titles and watermark icons, one continuous energised line 
 What we keep from v1: palette, fonts, copy, ids/testids (docs/CONTRACT.md), Lenis+GSAP architecture, gates.
 
 ## 1. Concept
-A night in an electrician's workshop. The page is a set of **blueprint sheets** („List 01/12 … 12/12“) pinned on a dark board.
+A night in an electrician's workshop. The page is a set of **blueprint sheets** („List 01/10 … 10/10“) pinned on a dark board.
 Every illustration is a real component drawn like a product cutaway: DIN-rail breakers, an RCD, terminal bars, a Schuko socket,
 a lamp holder, cable with copper strands. The story: the power is out → we open the board and **take the whole installation apart
 at once** (exploded view) → each faulty part is shown and fixed → **everything snaps back together at once** → the light comes on.
@@ -25,7 +25,7 @@ at once** (exploded view) → each faulty part is shown and fixed → **everythi
   (#A8663A→#5E3418), `insulation-ye-gn` (stripes #F1D33B/#3FA34D), plus `glow-volt`, `glow-arc` radial gradients and a
   `soft-shadow` filter (used sparingly, ≥1024px only). Every part: 1.25px outline `#0A0B10` at 60%, a 1px top-left highlight at
   35% white, a bottom-right shade band. Screw heads: circle + slot + highlight. Nothing is a plain flat rectangle.
-- Sheet chrome per section: eyebrow `LIST 03 / 12 ———` (mono, arc), title in display 800 (`clamp(2.5rem, 6vw, 5.5rem)`), optional
+- Sheet chrome per section: eyebrow `LIST 03 / 10 ———` (mono, arc), title in display 800 (`clamp(2.5rem, 6vw, 5.5rem)`), optional
   subtitle; corner marks `⌐ ¬` at the section's frame; thin dimension line with ticks under key illustrations, hatch (`////`) for
   walls. `SectionHeader` component owns this.
 - Type: Bricolage 800 display (hero up to 9rem, tight tracking, `text-wrap: balance`), Instrument Serif italic for the human line,
@@ -70,7 +70,7 @@ at once** (exploded view) → each faulty part is shown and fixed → **everythi
 9. **Testimonials / 10. FAQ**: as now with the new chrome (sheet labels, card style).
 11. **Contact/finale**: the cable arrives at a dimensional **wall switch** (real rocker), the **pendant bulb** (E27 holder, filament),
     the cone of light, the glass card with a big display title like Mile's contact. Sequence unchanged (CONTRACT).
-12. **Footer**: minimal + „List 12/12“.
+12. **Footer**: minimal + „List 10/10“. Sheet numbers: hero 01, trust 02, anatomy 03, services 04, process 05, before/after 06, testimonials 07, faq 08, contact 09, footer 10 (`SHEETS` in `src/components/SectionHeader.tsx`).
 
 ## 4. Motion rules (unchanged, non-negotiable)
 Transform/opacity/stroke-dashoffset/clip-path only; photosensitivity limits (≤3 changes per flicker, ≤600ms, never >3/s);
