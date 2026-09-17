@@ -15,7 +15,7 @@ function StarIcon() {
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <div role="img" aria-label={`${rating} od 5`} className="flex gap-0.5">
+    <div role="img" aria-label={`${rating} ${site.testimonials.ratingLabel}`} className="flex gap-0.5">
       {Array.from({ length: 5 }).map((_, index) => (
         <StarIcon key={index} />
       ))}
@@ -55,9 +55,12 @@ export function Testimonials() {
     const loop = [...row, ...row];
     const trackClass = direction === 'forward' ? 'marquee-track' : 'marquee-track-reverse';
     return (
-      <ul className={`flex w-max gap-4 ${trackClass} ${paused ? 'marquee-paused' : ''}`}>
+      <ul className={`flex w-max ${trackClass} ${paused ? 'marquee-paused' : ''}`}>
+        {/* The gap lives on every item (including the last), not on the
+            list, so one full copy is exactly `-50%` wide and the loop seam
+            never jumps (M4, docs/reports/review-1.md). */}
         {loop.map((item, index) => (
-          <li key={`${item.name}-${index}`} aria-hidden={index >= row.length}>
+          <li key={`${item.name}-${index}`} aria-hidden={index >= row.length} className="pr-4">
             <Card item={item} />
           </li>
         ))}
@@ -90,7 +93,7 @@ export function Testimonials() {
           data-testid="testimonials-toggle"
           aria-pressed={manualPause}
           onClick={() => setManualPause((value) => !value)}
-          className="focus-ring mt-6 rounded-md border border-line px-3 py-1.5 text-xs text-muted"
+          className="focus-ring mt-6 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-3 py-1.5 text-xs text-muted"
         >
           {manualPause ? site.testimonials.play : site.testimonials.pause}
         </button>

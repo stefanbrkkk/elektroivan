@@ -48,7 +48,7 @@ export function Trust() {
     <section ref={sectionRef} id="poverenje" data-testid="section-trust" className="section">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
         <div className="flex items-center justify-between gap-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-arc">{site.trust.eyebrow}</p>
+          <h2 className="font-mono text-xs uppercase tracking-widest text-arc">{site.trust.eyebrow}</h2>
           <DemoBadge />
         </div>
 
@@ -82,13 +82,16 @@ export function Trust() {
         >
           <ul
             data-testid="marquee"
-            className={`marquee-track flex w-max gap-10 whitespace-nowrap ${paused ? 'marquee-paused' : ''}`}
+            className={`marquee-track flex w-max whitespace-nowrap ${paused ? 'marquee-paused' : ''}`}
           >
+            {/* The gap lives on every item (including the last), not on the
+                list, so one full copy is exactly `-50%` wide and the loop
+                seam never jumps (M4, docs/reports/review-1.md). */}
             {loopItems.map((item, index) => (
               <li
                 key={`${item}-${index}`}
                 aria-hidden={index >= site.trust.marquee.length}
-                className="font-mono text-sm uppercase tracking-wide text-muted"
+                className="pr-10 font-mono text-sm uppercase tracking-wide text-muted"
               >
                 {item}
               </li>
@@ -101,7 +104,7 @@ export function Trust() {
           data-testid="marquee-toggle"
           aria-pressed={manualPause}
           onClick={() => setManualPause((value) => !value)}
-          className="focus-ring mt-3 rounded-md border border-line px-3 py-1.5 text-xs text-muted"
+          className="focus-ring mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-3 py-1.5 text-xs text-muted"
         >
           {manualPause ? site.testimonials.play : site.testimonials.pause}
         </button>

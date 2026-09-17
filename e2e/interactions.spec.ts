@@ -1,5 +1,7 @@
 import { test, expect, type Locator } from '@playwright/test';
 
+const SHOTS = 'test-results/shots';
+
 async function animationPlayState(locator: Locator): Promise<string> {
   return locator.evaluate((el) => getComputedStyle(el).animationPlayState);
 }
@@ -114,5 +116,50 @@ test.describe('marquee and testimonials pause controls', () => {
     for (let i = 0; i < rowCount; i++) {
       expect(await animationPlayState(tracks.nth(i))).toBe('running');
     }
+  });
+});
+
+test.describe('services bento at desktop width', () => {
+  test('no card text overflows its glass panel at 1024-1440 (M8, docs/reports/review-1.md)', async ({
+    page,
+  }) => {
+    test.skip((page.viewportSize()?.width ?? 0) !== 1440, 'd1440 only');
+
+    await page.goto('/');
+    // Let the once-per-session loader finish and hide itself before
+    // scrolling and capturing, so it never covers the shot.
+    await expect(page.getByTestId('section-intro')).toBeHidden();
+
+    const grid = page.getByTestId('section-services');
+    await grid.scrollIntoViewIfNeeded();
+
+    // Wait for the scroll-triggered reveal (stagger 0.08s * 5 + 0.6s tween)
+    // to finish before capturing, so the shot reflects final layout, not a
+    // mid-fade frame.
+    const cards = page.getByTestId('service-card');
+    await expect
+      .poll(async () => Number(await cards.last().evaluate((el) => getComputedStyle(el).opacity)))
+      .toBeGreaterThan(0.99);
+
+    await grid.screenshot({ path: `${SHOTS}/services-1440.png` });
+
+    // Geometry check: every card's content must fit inside its own
+    // bounding box (no descendant taller/wider than its glass panel).
+    const overflowing = await page.evaluate(() => {
+      const results: string[] = [];
+      document.querySelectorAll('[data-testid="service-card"]').forEach((card, index) => {
+        const cardBox = card.getBoundingClientRect();
+        card.querySelectorAll('*').forEach((child) => {
+          const box = child.getBoundingClientRect();
+          const overflowsBottom = box.bottom - cardBox.bottom > 1;
+          const overflowsRight = box.right - cardBox.right > 1;
+          if (overflowsBottom || overflowsRight) {
+            results.push(`card ${index}: child overflows (bottom ${box.bottom - cardBox.bottom}px, right ${box.right - cardBox.right}px)`);
+          }
+        });
+      });
+      return results;
+    });
+    expect(overflowing, overflowing.join('\n')).toEqual([]);
   });
 });

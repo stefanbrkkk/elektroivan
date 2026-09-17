@@ -22,7 +22,7 @@ export function Footer() {
           type="button"
           data-testid="back-to-top"
           onClick={handleBackToTop}
-          className="focus-ring rounded-md border border-line px-4 py-2 text-sm text-text"
+          className="focus-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-4 py-2 text-sm text-text"
         >
           {site.footer.backToTop}
         </button>

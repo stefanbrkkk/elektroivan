@@ -95,13 +95,16 @@ test.describe('mobile menu', () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-    const focusableCount = await page.getByTestId('nav-menu').locator('a[href], button').count();
+    // The toggle button lives outside `#nav-menu` in the DOM but is part of
+    // the focus trap (minor 5, docs/reports/review-1.md), so it counts too.
+    const focusableCount = (await page.getByTestId('nav-menu').locator('a[href], button').count()) + 1;
 
     for (let i = 0; i < focusableCount + 3; i++) {
       await page.keyboard.press('Tab');
       const isInside = await page.evaluate(() => {
         const menu = document.querySelector('[data-testid="nav-menu"]');
-        return !!menu && menu.contains(document.activeElement);
+        const navToggle = document.querySelector('[data-testid="nav-toggle"]');
+        return (!!menu && menu.contains(document.activeElement)) || document.activeElement === navToggle;
       });
       expect(isInside).toBe(true);
     }

@@ -44,6 +44,7 @@ export function Cursor() {
 
     function handlePointerMove(event: PointerEvent) {
       if (event.pointerType !== 'mouse') return;
+      show();
       const { clientX, clientY } = event;
       let targetX = clientX;
       let targetY = clientY;
@@ -80,14 +81,20 @@ export function Cursor() {
       }
     }
 
+    // The native cursor must be hidden only while the custom one is
+    // actually visible — toggling `cursor-none` here (not once on mount)
+    // keeps the two in lockstep, so a page that loads with the pointer
+    // already inside the viewport never ends up with neither cursor shown.
     function show() {
       dot!.style.opacity = '1';
       ring!.style.opacity = '1';
+      document.documentElement.classList.add('cursor-none');
     }
 
     function hide() {
       dot!.style.opacity = '0';
       ring!.style.opacity = '0';
+      document.documentElement.classList.remove('cursor-none');
     }
 
     function handleWindowMouseOut(event: MouseEvent) {
@@ -95,14 +102,18 @@ export function Cursor() {
     }
 
     hide();
-    document.documentElement.classList.add('cursor-none');
     window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerenter', show);
+    // `pointerover` bubbles (unlike `pointerenter`), so a listener on
+    // `window` actually fires for pointer events dispatched at descendant
+    // elements — belt-and-braces alongside the `show()` call in
+    // `handlePointerMove` above, which is what covers the common case of a
+    // page loading with the pointer already inside the viewport.
+    window.addEventListener('pointerover', show);
     window.addEventListener('mouseout', handleWindowMouseOut);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerenter', show);
+      window.removeEventListener('pointerover', show);
       window.removeEventListener('mouseout', handleWindowMouseOut);
       document.documentElement.classList.remove('cursor-none');
       if (magnetic) gsap.set(magnetic, { x: 0, y: 0 });
