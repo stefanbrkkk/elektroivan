@@ -190,7 +190,7 @@ export function Hero() {
         </g>
       </svg>
 
-      <div className="relative mx-auto w-full max-w-4xl px-4 md:px-6">
+      <div className="relative mx-auto w-full max-w-6xl px-4 md:px-6">
         <h1
           data-testid="hero-title"
           aria-label={ariaLabel}
@@ -206,6 +206,7 @@ export function Hero() {
                     count={12}
                     spread={22}
                     size={72}
+                    faultGlyph
                     className="absolute -right-10 top-1/2 -translate-y-1/2"
                   />
                 ) : null}
@@ -230,6 +231,7 @@ export function Hero() {
           <AnchorLink
             href="#kontakt"
             data-testid="hero-cta-primary"
+            data-magnetic
             className="focus-ring glow-amber rounded-md bg-volt px-6 py-3 font-semibold text-bg"
           >
             {site.hero.ctaPrimary}
@@ -237,7 +239,7 @@ export function Hero() {
           <AnchorLink
             href="#usluge"
             data-testid="hero-cta-secondary"
-            className="focus-ring rounded-md border border-line px-6 py-3 font-semibold text-text"
+            className="focus-ring rounded-md border border-line-strong px-6 py-3 font-semibold text-text"
           >
             {site.hero.ctaSecondary}
           </AnchorLink>

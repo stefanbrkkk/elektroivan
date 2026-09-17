@@ -1,4 +1,4 @@
-import { useId, type RefObject } from 'react';
+import { useId, type ReactNode, type RefObject } from 'react';
 import { CurrentPath } from '../../motion/CurrentPath';
 import { Sparks } from '../../motion/Sparks';
 import type { CurrentPathHandle, SparksHandle } from '../../motion/types';
@@ -192,7 +192,8 @@ function Cable({ sparks, lit }: { sparks: RefObject<SparksHandle | null>; lit: b
         strokeLinecap="round"
         fill="none"
       />
-      <g data-part="copper" opacity={lit ? 0 : 0}>
+      {/* Bare strands, shown by the timeline on the fault beat only. */}
+      <g data-part="copper" opacity={0}>
         <path
           d="M -16 -3 l 10 -2 M -16 0 l 11 1 M -16 3 l 9 3 M 16 -3 l -9 -3 M 16 0 l -11 1 M 16 3 l -10 2"
           stroke="var(--color-volt-lo)"
@@ -202,16 +203,20 @@ function Cable({ sparks, lit }: { sparks: RefObject<SparksHandle | null>; lit: b
         />
       </g>
 
-      <polyline
-        data-testid="anatomy-arc"
-        points="-15,0 -9,-8 -3,5 3,-6 9,7 15,0"
-        fill="none"
-        stroke="var(--color-arc)"
-        strokeWidth="2.4"
-        strokeLinejoin="round"
-        opacity="0"
-        visibility="hidden"
-      />
+      {/* The scrubbed master owns the group's autoAlpha; the live fault loop
+          owns the polyline's opacity. Two elements, two owners — scrubbing
+          through the beat can no longer strand a value the other one wrote
+          (docs/reports/review-1.md minor 17). */}
+      <g data-testid="anatomy-arc" opacity="0" visibility="hidden">
+        <polyline
+          data-part="arc-flicker"
+          points="-15,0 -9,-8 -3,5 3,-6 9,7 15,0"
+          fill="none"
+          stroke="var(--color-arc)"
+          strokeWidth="2.4"
+          strokeLinejoin="round"
+        />
+      </g>
 
       <g data-testid="anatomy-tape" opacity={lit ? 1 : 0} visibility={lit ? 'visible' : 'hidden'}>
         <g clipPath={`url(#jv-tape-clip-${stripes})`}>
@@ -240,6 +245,25 @@ function Cable({ sparks, lit }: { sparks: RefObject<SparksHandle | null>; lit: b
   );
 }
 
+/**
+ * Schuko face: a recessed circle, the two pin holes, the earth clips top and
+ * bottom and a fixing screw. Every detail is a *stroke*, never a `--color-bg`
+ * fill — at the DIM opacity the unlit components sit at, a background-coloured
+ * hole on a dark stage is invisible and the socket reads as a blank box
+ * (docs/reports/review-1.md minor 16).
+ */
+function SocketFace({ stroke }: { stroke: string }) {
+  return (
+    <g fill="none" stroke={stroke} strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="0" cy="0" r="20" />
+      <circle cx="-10" cy="0" r="4.5" fill="var(--color-bg)" />
+      <circle cx="10" cy="0" r="4.5" fill="var(--color-bg)" />
+      <path d="M -7 -19 h 14 M -7 19 h 14" strokeWidth="2.5" />
+      <circle cx="0" cy="-24" r="2.5" />
+    </g>
+  );
+}
+
 function Socket({ sparks, lit }: { sparks: RefObject<SparksHandle | null>; lit: boolean }) {
   return (
     <>
@@ -255,8 +279,7 @@ function Socket({ sparks, lit }: { sparks: RefObject<SparksHandle | null>; lit: 
           stroke="var(--color-line)"
           strokeWidth="2"
         />
-        <circle cx="-10" cy="0" r="4.5" fill="var(--color-bg)" />
-        <circle cx="10" cy="0" r="4.5" fill="var(--color-bg)" />
+        <SocketFace stroke="var(--color-line)" />
         <ellipse data-part="soot" cx="2" cy="-8" rx="20" ry="13" fill="var(--color-fault)" opacity="0" />
       </g>
       <g data-part="new-socket" opacity={lit ? 1 : 0}>
@@ -270,9 +293,7 @@ function Socket({ sparks, lit }: { sparks: RefObject<SparksHandle | null>; lit: 
           stroke="var(--color-muted)"
           strokeWidth="2"
         />
-        <circle cx="-10" cy="0" r="4.5" fill="var(--color-bg)" />
-        <circle cx="10" cy="0" r="4.5" fill="var(--color-bg)" />
-        <rect x="-16" y="-24" width="32" height="4" rx="2" fill="var(--color-line)" />
+        <SocketFace stroke="var(--color-muted)" />
         <rect
           data-part="sweep"
           x="-34"
@@ -302,17 +323,33 @@ function Lamp() {
         stroke="var(--color-line)"
         strokeWidth="2"
       />
-      <rect
-        data-part="rocker"
-        x="-12"
-        y="-13"
-        width="24"
-        height="26"
-        rx="3"
-        fill="var(--color-line)"
-        stroke="var(--color-muted)"
-        strokeWidth="1.2"
-      />
+      {/* Two fixing screws in the plate, so the switch reads as a switch even
+          while it is dimmed (docs/reports/review-1.md minor 16). */}
+      <g fill="none" stroke="var(--color-line)" strokeWidth="1.5">
+        <circle cx="-16" cy="0" r="2.5" />
+        <circle cx="16" cy="0" r="2.5" />
+      </g>
+      <g data-part="rocker">
+        <rect
+          x="-12"
+          y="-13"
+          width="24"
+          height="26"
+          rx="3"
+          fill="var(--color-line)"
+          stroke="var(--color-muted)"
+          strokeWidth="1.2"
+        />
+        {/* The rocker's lit edge and its pivot line. */}
+        <path
+          d="M -9 -10 h 18"
+          stroke="var(--color-muted)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          opacity="0.75"
+        />
+        <path d="M -12 1 h 24" stroke="var(--color-bg)" strokeWidth="1.5" opacity="0.8" />
+      </g>
     </>
   );
 }
@@ -326,10 +363,16 @@ function Lamp() {
 export function CircuitSvg({ layout, lit, sparks, current, label }: CircuitSvgProps) {
   const gradientId = `jv-bulb-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
 
-  const placement = (node: CircuitNode) =>
-    node.rotate
-      ? `translate(${node.x} ${node.y}) rotate(${node.rotate})`
-      : `translate(${node.x} ${node.y})`;
+  // Only the translation goes on the node group: that group is what the
+  // scrubbed timeline drives (x/y/scale), and GSAP resolves a percentage
+  // `transformOrigin` against `getBBox()` — which is not the component's own
+  // (0, 0) once sparks and halos widen it, so letting GSAP own the rotation
+  // slid the rotated component clean off the path. The orientation is a
+  // static inner `<g>` instead; nothing animated ever touches it.
+  const placement = (node: CircuitNode) => `translate(${node.x} ${node.y})`;
+
+  const oriented = (node: CircuitNode, children: ReactNode) =>
+    node.rotate ? <g transform={`rotate(${node.rotate})`}>{children}</g> : children;
 
   return (
     <svg
@@ -368,11 +411,16 @@ export function CircuitSvg({ layout, lit, sparks, current, label }: CircuitSvgPr
           transform={placement(node)}
           opacity={lit ? 1 : DIM}
         >
-          {node.id === 'breaker' ? <Breaker sparks={sparks.breaker} /> : null}
-          {node.id === 'rcd' ? <Rcd /> : null}
-          {node.id === 'cable' ? <Cable sparks={sparks.cable} lit={lit} /> : null}
-          {node.id === 'socket' ? <Socket sparks={sparks.socket} lit={lit} /> : null}
-          {node.id === 'lamp' ? <Lamp /> : null}
+          {oriented(
+            node,
+            <>
+              {node.id === 'breaker' ? <Breaker sparks={sparks.breaker} /> : null}
+              {node.id === 'rcd' ? <Rcd /> : null}
+              {node.id === 'cable' ? <Cable sparks={sparks.cable} lit={lit} /> : null}
+              {node.id === 'socket' ? <Socket sparks={sparks.socket} lit={lit} /> : null}
+              {node.id === 'lamp' ? <Lamp /> : null}
+            </>
+          )}
         </g>
       ))}
 
@@ -402,6 +450,10 @@ export function CircuitSvg({ layout, lit, sparks, current, label }: CircuitSvgPr
           fill="var(--color-volt-hi)"
           opacity={lit ? 0.85 : 0.08}
         />
+        {/* Owned by the live fault loop alone — the master never tweens it, so
+            a scrub through step 5's fault beat cannot strand the bulb at a
+            half-dimmed value (docs/reports/review-1.md minor 17). */}
+        <circle data-part="bulb-flicker" r="17" cy="4" fill="var(--color-volt-hi)" opacity="0" />
       </g>
     </svg>
   );

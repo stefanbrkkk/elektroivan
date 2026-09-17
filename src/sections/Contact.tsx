@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
 import { mailtoHref, site } from '../config/site';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { CurrentPath } from '../motion/CurrentPath';
 import { Sparks } from '../motion/Sparks';
 import { EASE, ScrollTrigger, gsap, unveil, useGSAP, whenNear } from '../motion/motion';
 import { flickerOn } from '../motion/flicker';
-import type { SparksHandle } from '../motion/types';
+import type { CurrentPathHandle, SparksHandle } from '../motion/types';
 
 const CARD_HIDDEN = 'inset(0% 0% 100% 0%)';
 const CARD_SHOWN = 'inset(0% 0% 0% 0%)';
@@ -43,6 +44,13 @@ async function copyToClipboard(value: string): Promise<boolean> {
  * inside that light — clip-path top→bottom, a small overshoot on the rise and
  * one highlight sweep.
  *
+ * Beat 1 is a real beat, not an assumption: the last stretch of cable into the
+ * switch is a short `CurrentPath` stub owned by this scene and energized at
+ * `t=0`, before anything else moves. On ≥1024px `MainLine` ends exactly on its
+ * left edge (`[data-mainline-end]`) and is fully drawn by the time this scene
+ * starts; below that there is no site cable at all, so the stub carries the
+ * whole arrival (docs/reports/review-1.md M5).
+ *
  * One timeline is reused: it plays on enter and only reverses once the section
  * has fully left the viewport (and never while something inside the card has
  * focus). A 2.5s safety net forces the end state if ScrollTrigger never fires,
@@ -53,6 +61,7 @@ export function Contact() {
   const reduced = usePrefersReducedMotion();
   const rootRef = useRef<HTMLElement>(null);
   const sparksRef = useRef<SparksHandle>(null);
+  const tailRef = useRef<CurrentPathHandle>(null);
   const emailRef = useRef<HTMLAnchorElement>(null);
 
   async function handleCopy() {
@@ -98,6 +107,7 @@ export function Contact() {
 
       if (reduced) {
         setOn(true);
+        tailRef.current?.setProgress(1);
         if (card) gsap.set(card, { opacity: 1, y: 0, clipPath: CARD_SHOWN });
         if (cone) gsap.set(cone, { opacity: 1 });
         if (bulb) gsap.set(bulb, { opacity: 0.9 });
@@ -111,6 +121,7 @@ export function Contact() {
       // markup (`.jv-veil` hides it, and unveil() just took that away).
       gsap.set(card, { opacity: 0, y: 28, clipPath: CARD_HIDDEN });
       setOn(false);
+      tailRef.current?.setProgress(0);
 
       // The scene itself is built near the viewport (BRIEF §7): the section's
       // height is plain flow content, nothing here moves it, so CLS stays 0.
@@ -126,37 +137,44 @@ export function Contact() {
 
         const timeline = gsap.timeline({ paused: true });
 
+        // beat 1 — the current reaches the switch
+        const tail = tailRef.current?.timeline(0, 1, { duration: 0.34, ease: 'power1.out' });
+        if (tail) timeline.add(tail, 0);
+
+        // beat 2 — the switch flips, with a "click" highlight
         if (rocker) {
-          timeline.to(rocker, { y: 18, duration: 0.18, ease: 'power3.in' }, 0);
+          timeline.to(rocker, { y: 18, duration: 0.18, ease: 'power3.in' }, 0.34);
         }
-        timeline.add(() => setOn(!timeline.reversed()), 0.16);
+        timeline.add(() => setOn(!timeline.reversed()), 0.5);
         if (click) {
           timeline
-            .to(click, { opacity: 0.35, duration: 0.1 }, 0.16)
-            .to(click, { opacity: 0, duration: 0.2 }, 0.26);
+            .to(click, { opacity: 0.35, duration: 0.1 }, 0.5)
+            .to(click, { opacity: 0, duration: 0.2 }, 0.6);
         }
+        // beat 3 — the filament catches
         if (filament) {
-          timeline.add(flickerOn(filament, { glow: halo ?? undefined, duration: 0.5 }), 0.3);
+          timeline.add(flickerOn(filament, { glow: halo ?? undefined, duration: 0.5 }), 0.64);
         }
         if (bulb) {
-          timeline.to(bulb, { opacity: 0.9, duration: 0.45, ease: 'power2.out' }, 0.5);
+          timeline.to(bulb, { opacity: 0.9, duration: 0.45, ease: 'power2.out' }, 0.84);
         }
+        // beat 4 — the light cone opens and the card appears inside it
         if (cone) {
-          timeline.to(cone, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0.55);
+          timeline.to(cone, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0.89);
         }
         timeline.to(
           card,
           { opacity: 1, y: 0, clipPath: CARD_SHOWN, duration: 0.75, ease: 'back.out(1.1)' },
-          0.7
+          1.04
         );
         if (sweep) {
           timeline.fromTo(
             sweep,
             { xPercent: -120, opacity: 0 },
             { xPercent: 260, opacity: 1, duration: 0.8, ease: EASE.quart },
-            1.05
+            1.39
           );
-          timeline.to(sweep, { opacity: 0, duration: 0.2 }, 1.7);
+          timeline.to(sweep, { opacity: 0, duration: 0.2 }, 2.04);
         }
 
         const play = () => {
@@ -172,8 +190,12 @@ export function Contact() {
         // `onToggle` + `onRefresh` rather than onEnter/onEnterBack: a refresh
         // (pin spacers, fonts, resize) can land while the section is already on
         // screen, and enter callbacks are suppressed during a refresh.
+        // The switch, not the section: `MainLine`'s energized tip is timed off
+        // the same element (`top 75%`), so the current always arrives before
+        // the scene starts. Triggering off the section top fired the finale a
+        // whole viewport early, with the cable still short of the switch.
         const enter = ScrollTrigger.create({
-          trigger: root,
+          trigger: switchEl ?? root,
           start: 'top 60%',
           end: 'bottom top',
           onToggle: (self) => {
@@ -199,8 +221,9 @@ export function Contact() {
           if (timeline.progress() > 0 || timeline.isActive()) return;
           const rect = root.getBoundingClientRect();
           if (rect.top >= window.innerHeight || rect.bottom <= 0) return;
-          // `progress()` is a seek: it suppresses callbacks, so mirror the
-          // switch/bulb state by hand.
+          // `progress(1)` does *not* suppress callbacks (only `seek()` does,
+          // see docs/DECISIONS.md phase 4), but mirroring the switch/bulb state
+          // by hand is cheap and makes the end state independent of ordering.
           timeline.progress(1);
           setOn(true);
         });
@@ -231,13 +254,16 @@ export function Contact() {
       className="dot-grid section relative overflow-hidden"
     >
       <div className="relative mx-auto max-w-2xl px-4 md:px-6">
-        <div className="relative flex flex-col items-center">
-          <div
-            data-contact-cone=""
-            aria-hidden="true"
-            className="jv-cone left-1/2 top-24 h-[420px] w-[130%] -translate-x-1/2"
-          />
+        {/* Sibling of the card, not of the bulb: anchored `top-24 -bottom-16`
+            it always runs past the card's bottom edge, at every viewport, so
+            the gradient finishes fading below the glass instead of on it. */}
+        <div
+          data-contact-cone=""
+          aria-hidden="true"
+          className="jv-cone -bottom-16 left-1/2 top-24 w-[130%] -translate-x-1/2"
+        />
 
+        <div className="relative flex flex-col items-center">
           <svg width="96" height="150" viewBox="0 0 96 150" aria-hidden="true" className="relative">
             <line x1="48" y1="0" x2="48" y2="46" stroke="var(--color-line)" strokeWidth="2" />
             <rect x="40" y="44" width="16" height="12" rx="3" fill="var(--color-line)" />
@@ -274,10 +300,24 @@ export function Contact() {
             />
           </svg>
 
+          {/* The last stretch of cable into the switch — beat 1. Its box is
+              `[data-mainline-end]`, so MainLine stops on its left edge and the
+              two read as one cable; 180px is the bulb SVG (150) + `mt-2` (8)
+              + half the switch (32), minus half of this box. */}
+          <svg
+            data-mainline-end=""
+            aria-hidden="true"
+            width="120"
+            height="20"
+            viewBox="0 0 120 20"
+            className="jv-contact-tail pointer-events-none absolute right-[calc(50%+20px)] top-[180px] z-10"
+          >
+            <CurrentPath ref={tailRef} d="M 0 10 H 120" strokeWidth={7} coreWidth={2.5} />
+          </svg>
+
           <div
             data-testid="contact-switch"
             data-on="false"
-            data-mainline-end=""
             aria-hidden="true"
             className="glass relative mt-2 h-16 w-11 overflow-hidden"
           >
@@ -330,7 +370,7 @@ export function Contact() {
               onClick={() => {
                 void handleCopy();
               }}
-              className="focus-ring relative rounded-md border border-line px-4 py-2 text-sm text-text"
+              className="focus-ring relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-4 py-2 text-sm text-text"
             >
               {site.contact.copy}
             </button>

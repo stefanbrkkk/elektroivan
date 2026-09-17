@@ -360,6 +360,14 @@ test.describe('G3 motion — reduced motion is a complete static experience', ()
       width: box?.width ?? 0,
       height: Math.min(box?.height ?? 0, (viewport?.height ?? 0) - (box?.y ?? 0)),
     };
+    // Warm-up capture, thrown away. The first paint after a programmatic
+    // scroll comes off a compositor layer Chromium is still settling, and it
+    // rasterises a handful of anti-aliased pixels (measured: 6, ≤11/255, on the
+    // scroll-hint dot) differently from every frame after it — nothing on the
+    // page moves, the element's box is identical to three decimal places.
+    // Comparing two settled frames keeps the assertion exact.
+    await page.screenshot({ clip });
+    await page.waitForTimeout(400);
     const first = await page.screenshot({ path: `${SHOTS}/hero-${tag}-reduced.png`, clip });
     await page.waitForTimeout(400);
     const second = await page.screenshot({ clip });

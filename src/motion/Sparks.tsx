@@ -15,6 +15,10 @@ const MAX_PARTICLES = 14;
  *
  * Renders a standalone `<svg>` by default (position it with `className`), or
  * a bare `<g>` with `as="g"` to live inside an existing SVG scene.
+ *
+ * The static glyph is opt-in (`faultGlyph`): a stray blue squiggle under the
+ * "Kopiraj" button or beside "Spojeno. Bez varnica." reads as a rendering bug,
+ * not as an illustration (docs/reports/review-1.md minor 3).
  */
 export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
   {
@@ -25,6 +29,7 @@ export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
     transform,
     spread = 18,
     size = 56,
+    faultGlyph = false,
     testId,
   },
   ref
@@ -158,7 +163,7 @@ export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
     { dependencies: [reduced, active, spread, poolSize], revertOnUpdate: true }
   );
 
-  const children = reduced ? (
+  const glyph = faultGlyph ? (
     <polyline
       points="-6,4 -2,-2 2,3 6,-4"
       fill="none"
@@ -167,6 +172,10 @@ export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
       strokeLinecap="round"
       opacity="0.85"
     />
+  ) : null;
+
+  const children = reduced ? (
+    glyph
   ) : (
     Array.from({ length: poolSize }, (_, index) => (
       <line

@@ -8,6 +8,34 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const BEND_PATTERN = [1, -0.4, 0.75, -0.25, 0.6, -0.5, 0.9, -0.3, 0.7];
 /** How far the travelling pulse runs before it reaches the energized tip (px). */
 const PULSE_TRAVEL = 260;
+/**
+ * Where `[data-mainline-end]` must sit, as a fraction of the viewport height,
+ * for the cable to be fully energized (docs/BRIEF.md §6.11 beat 1: the current
+ * reaches the switch *before* it flips). The finale itself starts at `top 60%`
+ * of the switch, so the arrival always lands first — see `src/sections/
+ * Contact.tsx` and docs/reports/review-1.md M5.
+ */
+const ARRIVAL_VIEWPORT_FRACTION = 0.75;
+
+/**
+ * Scroll distance from the top of the document at which the energized part has
+ * to reach the switch. Recomputed by ScrollTrigger on every refresh, so pin
+ * spacers, fonts and resizes are all accounted for.
+ */
+function arrivalScroll(): number {
+  const maxScroll = Math.max(
+    1,
+    document.documentElement.scrollHeight - window.innerHeight
+  );
+  const end = document.querySelector<HTMLElement>('[data-mainline-end]');
+  if (!end) return maxScroll;
+  const documentY = end.getBoundingClientRect().top + window.scrollY;
+  return gsap.utils.clamp(
+    1,
+    maxScroll,
+    documentY - window.innerHeight * ARRIVAL_VIEWPORT_FRACTION
+  );
+}
 
 interface Point {
   x: number;
@@ -38,16 +66,17 @@ function roundedRoute(points: Point[]): string {
  *
  * ≥1024px: a full-document-height SVG pinned to the left gutter, routed from
  * real DOM measurements — it starts under the hero, bends toward every
- * `<main>` section (clamp rings at each bend) and ends exactly on the contact
- * switch (`[data-mainline-end]`). The energized part scrubs its
- * `stroke-dashoffset` with total scroll progress and a short pulse rides the
- * energized tip, paused whenever that tip is off screen.
+ * `<main>` section (clamp rings at each bend) and ends exactly where the
+ * contact stub takes over (`[data-mainline-end]`). The energized part scrubs
+ * its `stroke-dashoffset` with scroll and a short pulse rides the energized
+ * tip, paused whenever that tip is off screen.
  *
  * <1024px: the SVG is not rendered at all and the same progress drives a 2px
  * top bar instead (transform only).
  *
  * Geometry is rebuilt on every `refreshInit`, so pin spacers, fonts and
- * resizes are all accounted for.
+ * resizes are all accounted for. Under reduced motion there is no trigger at
+ * all: the line is drawn energized once (BRIEF §5.2 — no scrub).
  */
 export function MainLine() {
   const reduced = usePrefersReducedMotion();
@@ -110,7 +139,12 @@ export function MainLine() {
           rect: section.getBoundingClientRect(),
         }));
 
-        const endX = endRect.left + offsetX + 4;
+        // Stop exactly on the contact stub's left edge. The stub is an `<svg>`,
+        // so its own viewport clips both of its round caps flat at that same x,
+        // and it paints above this layer (z-10 vs z-5): this cable's core runs
+        // up to the cut, the stub's core starts at it, and neither sheath cap
+        // punches a dark notch into the other's amber core.
+        const endX = endRect.left + offsetX;
         const endY = endRect.top + endRect.height / 2 + offsetY;
 
         const points: Point[] = [{ x: baseX, y: heroRect.bottom + offsetY - 48 }];
@@ -156,16 +190,29 @@ export function MainLine() {
 
         length = energized.getTotalLength();
         energized.style.strokeDasharray = `${length}`;
-        energized.style.strokeDashoffset = `${length}`;
+        // Reduced motion has no scrub trigger at all (BRIEF §5.2), so the line
+        // is simply drawn in its end state — energized all the way.
+        energized.style.strokeDashoffset = reduced ? '0' : `${length}`;
       };
 
       build();
+
+      // Reduced motion: set the end state once and own no trigger. Geometry
+      // still rebuilds on refresh, which is a pure re-measure, not a scrub.
+      if (reduced) {
+        setFill?.(1);
+        ScrollTrigger.addEventListener('refreshInit', build);
+        return () => {
+          ScrollTrigger.removeEventListener('refreshInit', build);
+          disposeWatchers();
+        };
+      }
 
       let progress = 0;
       let pulseVisible = false;
       let pulse: gsap.core.Tween | null = null;
 
-      if (dot && !reduced && desktop) {
+      if (dot && desktop) {
         const state = { t: 0 };
         const setX = gsap.quickSetter(dot, 'x', 'px');
         const setY = gsap.quickSetter(dot, 'y', 'px');
@@ -190,10 +237,6 @@ export function MainLine() {
         progress = self.progress;
         setFill?.(progress);
 
-        if (reduced && energized && length > 0) {
-          energized.style.strokeDashoffset = `${length * (1 - progress)}`;
-        }
-
         if (!pulse || !dot || !energized || length === 0) return;
         const tip = energized.getPointAtLength(length * progress);
         const visible =
@@ -214,14 +257,20 @@ export function MainLine() {
       const scrollTriggerVars: ScrollTrigger.Vars = {
         trigger: document.body,
         start: 'top top',
-        end: 'bottom bottom',
-        scrub: reduced ? true : 0.4,
+        // NOT `bottom bottom`: that only completes the line once the page is
+        // scrolled past the footer, with the switch long gone off screen, so
+        // the finale used to fire over a cable that was still ~200px short of
+        // it (docs/reports/review-1.md M5). The whole-document scroll still
+        // drives the growth — it just finishes at the switch.
+        end: () => `+=${arrivalScroll()}`,
+        scrub: 0.4,
         invalidateOnRefresh: true,
         // ScrollTrigger only sorts triggers when at least one declares a
         // refreshPriority — without it they refresh in creation order and
         // everything below a pin measures a document that has not been
         // re-spaced yet. Declaring it here both enables the position sort for
-        // the whole page and makes this document-height trigger refresh last.
+        // the whole page and makes this trigger refresh last, so `end` reads a
+        // document whose pin spacers are already in place.
         refreshPriority: -999,
         onUpdate,
       };
@@ -229,7 +278,7 @@ export function MainLine() {
       let tween: gsap.core.Tween | null = null;
       let trigger: ScrollTrigger | null = null;
 
-      if (energized && !reduced) {
+      if (energized) {
         tween = gsap.fromTo(
           energized,
           { strokeDashoffset: () => length },

@@ -92,13 +92,20 @@
   }
 }
 
+/* `index.html` sets `viewport-fit=cover`, so a fixed bar has to step around
+ * the notch itself (BRIEF §7, docs/reports/review-1.md M9): the top inset
+ * moves it below the status bar and the side insets keep the fill out of the
+ * rounded corners. `box-sizing: border-box` (Tailwind preflight) keeps the
+ * 2px height; the padding only shortens the fill. */
 .jv-progress {
   position: fixed;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   left: 0;
   right: 0;
   z-index: 45;
   height: 2px;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   pointer-events: none;
   background-color: color-mix(in srgb, var(--color-line) 70%, transparent);
 }
@@ -159,16 +166,50 @@
 }
 
 /* ---------------------------------------------------------------- contact */
+/* The light falling out of the bulb (BRIEF §6.11.4). The wedge lives on the
+ * pseudo-element and the blur on the element itself: CSS applies `filter`
+ * before `clip-path`, so blurring the clipped element would have kept both
+ * diagonals as 1px lines (docs/reports/review-1.md M6). Blurring the parent of
+ * the clipped child softens them instead. The gradient reaches `transparent`
+ * well inside the box, and the box is sized past the card's bottom edge, so
+ * the light dies out gradually instead of stopping on a seam across the glass.
+ * Only `opacity` is ever animated. */
 .jv-cone {
   position: absolute;
   pointer-events: none;
   opacity: 0;
-  clip-path: polygon(38% 0%, 62% 0%, 100% 100%, 0% 100%);
+  filter: blur(18px);
+}
+
+.jv-cone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(41% 0%, 59% 0%, 97% 100%, 3% 100%);
   background-image: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--color-volt) 34%, transparent),
-    transparent 78%
+    color-mix(in srgb, var(--color-volt) 46%, transparent) 0%,
+    color-mix(in srgb, var(--color-volt) 30%, transparent) 26%,
+    color-mix(in srgb, var(--color-volt) 15%, transparent) 58%,
+    color-mix(in srgb, var(--color-volt) 5%, transparent) 82%,
+    transparent 96%
   );
+}
+
+/* A wider blur is only worth its raster cost on a desktop GPU (BRIEF §7). */
+@media (min-width: 1024px) {
+  .jv-cone {
+    filter: blur(30px);
+  }
+}
+
+/* Below 1024px there is no site-wide cable to hand over to, so the contact
+ * stub emerges out of the dark instead of starting in mid-air. */
+@media (max-width: 1023px) {
+  .jv-contact-tail {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 34%);
+    mask-image: linear-gradient(to right, transparent, #000 34%);
+  }
 }
 
 .jv-sweep {

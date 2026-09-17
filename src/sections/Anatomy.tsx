@@ -78,8 +78,16 @@ export function Anatomy() {
       const bulb = root.querySelector<SVGCircleElement>('[data-testid="anatomy-bulb"]');
       const bulbGlow = root.querySelector<SVGCircleElement>('[data-node="bulb"] [data-part="bulb-glow"]');
       const filament = root.querySelector<SVGPathElement>('[data-node="bulb"] [data-part="filament"]');
-      const arc = root.querySelector<SVGPolylineElement>('[data-testid="anatomy-arc"]');
+      const arc = root.querySelector<SVGGElement>('[data-testid="anatomy-arc"]');
       const tape = root.querySelector<SVGGElement>('[data-testid="anatomy-tape"]');
+      // The two elements the live fault loops own outright. Nothing on the
+      // scrubbed master ever touches them (docs/reports/review-1.md minor 17).
+      const arcFlickerEl = root.querySelector<SVGPolylineElement>(
+        '[data-testid="anatomy-arc"] [data-part="arc-flicker"]'
+      );
+      const bulbFlickerEl = root.querySelector<SVGCircleElement>(
+        '[data-node="bulb"] [data-part="bulb-flicker"]'
+      );
 
       unveil(cards, finalText);
 
@@ -115,6 +123,11 @@ export function Anatomy() {
         arcFlicker = null;
         bulbFlicker?.kill();
         bulbFlicker = null;
+        // Park what the loops own. A plain style write, not `gsap.set`: these
+        // two elements have exactly one owner, so there is nothing to read
+        // back and no tug of war with the master to resolve.
+        if (arcFlickerEl) arcFlickerEl.style.opacity = '1';
+        if (bulbFlickerEl) bulbFlickerEl.style.opacity = '0';
         sparks.cable.current?.stop();
         sparks.socket.current?.stop();
       };
@@ -153,13 +166,15 @@ export function Anatomy() {
         }
         if (beat === 'fault' && steps[step].id === 'cable') {
           sparks.cable.current?.start();
-          if (arc) arcFlicker = flickerFault(arc, { dip: 0.22, interval: 0.9 });
+          if (arcFlickerEl) {
+            arcFlicker = flickerFault(arcFlickerEl, { dip: 0.22, interval: 0.9 });
+          }
         }
         if (beat === 'fault' && steps[step].id === 'socket') {
           sparks.socket.current?.start();
         }
-        if (beat === 'fault' && steps[step].id === 'lamp' && bulb) {
-          bulbFlicker = flickerFault(bulb, { dip: 0.12, interval: 1.2 });
+        if (beat === 'fault' && steps[step].id === 'lamp' && bulbFlickerEl) {
+          bulbFlicker = flickerFault(bulbFlickerEl, { dip: 0.12, interval: 1.2 });
         }
       };
 
@@ -223,7 +238,6 @@ export function Anatomy() {
           gsap.set(element, {
             x: item.x,
             y: item.y,
-            rotation: item.rotate,
             transformOrigin: '50% 50%',
             opacity: 0.5,
           });
@@ -423,7 +437,7 @@ export function Anatomy() {
             data-active={(reduced ? index === steps.length - 1 : index === 0) ? 'true' : 'false'}
             aria-label={step.name}
             onClick={() => goToStep(index)}
-            className="focus-ring group flex h-11 w-9 items-center justify-center rounded-md"
+            className="focus-ring group flex h-11 w-11 items-center justify-center rounded-md"
           >
             <span
               aria-hidden="true"

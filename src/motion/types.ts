@@ -18,6 +18,12 @@ export interface SparksProps {
   spread?: number;
   /** Box size in px for the standalone `svg` variant. */
   size?: number;
+  /**
+   * Reduced motion only: draw the small static arc glyph that stands in for
+   * the burst. Opt in *only* where the still frame illustrates a fault — never
+   * beside a button or on a circuit that is already repaired.
+   */
+  faultGlyph?: boolean;
   testId?: string;
 }
 
