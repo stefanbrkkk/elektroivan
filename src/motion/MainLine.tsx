@@ -43,7 +43,8 @@ function roundedRoute(points: Point[]): string {
  * `stroke-dashoffset` with total scroll progress and a short pulse rides the
  * energized tip, paused whenever that tip is off screen.
  *
- * <1024px: the same progress drives a 2px top bar instead (transform only).
+ * <1024px: the SVG is not rendered at all and the same progress drives a 2px
+ * top bar instead (transform only).
  *
  * Geometry is rebuilt on every `refreshInit`, so pin spacers, fonts and
  * resizes are all accounted for.
@@ -254,7 +255,11 @@ export function MainLine() {
 
   return (
     <>
+      {/* The cable exists on ≥1024px only (BRIEF §7 keeps the phone path
+          light): below that the same progress drives the 2px bar and the SVG
+          would be `display: none` dead weight in the layout tree. */}
       <div ref={layerRef} className="jv-mainline-layer" aria-hidden="true">
+        {desktop ? (
         <svg ref={svgRef} data-testid="mainline" className="jv-mainline" aria-hidden="true">
           <path
             ref={sheathRef}
@@ -286,6 +291,7 @@ export function MainLine() {
           />
           <circle ref={dotRef} r="4" cx="0" cy="0" fill="var(--color-volt-hi)" opacity="0" />
         </svg>
+        ) : null}
       </div>
       <div data-testid="progress-bar" className="jv-progress" aria-hidden="true">
         <div ref={fillRef} className="jv-progress-fill" />

@@ -61,12 +61,17 @@ export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
 
       let onScreen = false;
       let wanted = active;
+      // True once a particle has actually been thrown. Resetting the pool means
+      // one `getComputedStyle` per particle, and six emitters × up to 14 lines
+      // of that inside the boot task is pure waste when nothing ever moved.
+      let thrown = false;
 
       const setVisible = (visible: boolean) => {
         root.setAttribute('data-active', visible ? 'true' : 'false');
       };
 
       const spawn = (n?: number) => {
+        thrown = true;
         const half = isSmallOrCoarse();
         const requested = n ?? particles.length;
         const amount = Math.max(3, Math.round(half ? requested / 2 : requested));
@@ -105,8 +110,11 @@ export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
           if (!loop.isActive()) loop.play(0);
         } else {
           loop.pause(0);
-          gsap.killTweensOf(particles);
-          gsap.set(particles, { opacity: 0 });
+          if (thrown) {
+            thrown = false;
+            gsap.killTweensOf(particles);
+            gsap.set(particles, { opacity: 0 });
+          }
           setVisible(false);
         }
       };
@@ -136,7 +144,8 @@ export const Sparks = forwardRef<SparksHandle, SparksProps>(function Sparks(
         },
       };
 
-      gsap.set(particles, { opacity: 0 });
+      // The pool already ships with `opacity="0"` and the group with
+      // `data-active="false"`, so the resting state needs no writes at all.
       setVisible(false);
 
       return () => {

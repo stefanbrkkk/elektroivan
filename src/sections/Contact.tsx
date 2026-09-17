@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { mailtoHref, site } from '../config/site';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { Sparks } from '../motion/Sparks';
-import { EASE, ScrollTrigger, gsap, unveil, useGSAP } from '../motion/motion';
+import { EASE, ScrollTrigger, gsap, unveil, useGSAP, whenNear } from '../motion/motion';
 import { flickerOn } from '../motion/flicker';
 import type { SparksHandle } from '../motion/types';
 
@@ -107,99 +107,117 @@ export function Contact() {
         return undefined;
       }
 
+      // The card is the only element whose resting state is not already in the
+      // markup (`.jv-veil` hides it, and unveil() just took that away).
       gsap.set(card, { opacity: 0, y: 28, clipPath: CARD_HIDDEN });
-      if (bulb) gsap.set(bulb, { opacity: 0.08 });
-      if (filament) gsap.set(filament, { opacity: 0.16 });
-      if (halo) gsap.set(halo, { opacity: 0 });
-      if (cone) gsap.set(cone, { opacity: 0 });
       setOn(false);
 
-      const timeline = gsap.timeline({ paused: true });
+      // The scene itself is built near the viewport (BRIEF §7): the section's
+      // height is plain flow content, nothing here moves it, so CLS stays 0.
+      let disposeScene: (() => void) | null = null;
 
-      if (rocker) {
-        timeline.to(rocker, { y: 18, duration: 0.18, ease: 'power3.in' }, 0);
-      }
-      timeline.add(() => setOn(!timeline.reversed()), 0.16);
-      if (click) {
-        timeline
-          .to(click, { opacity: 0.35, duration: 0.1 }, 0.16)
-          .to(click, { opacity: 0, duration: 0.2 }, 0.26);
-      }
-      if (filament) {
-        timeline.add(flickerOn(filament, { glow: halo ?? undefined, duration: 0.5 }), 0.3);
-      }
-      if (bulb) {
-        timeline.to(bulb, { opacity: 0.9, duration: 0.45, ease: 'power2.out' }, 0.5);
-      }
-      if (cone) {
-        timeline.to(cone, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0.55);
-      }
-      timeline.to(
-        card,
-        { opacity: 1, y: 0, clipPath: CARD_SHOWN, duration: 0.75, ease: 'back.out(1.1)' },
-        0.7
-      );
-      if (sweep) {
-        timeline.fromTo(
-          sweep,
-          { xPercent: -120, opacity: 0 },
-          { xPercent: 260, opacity: 1, duration: 0.8, ease: EASE.quart },
-          1.05
+      const buildScene = () => {
+        // Restate the dark start state the markup already paints, so the
+        // timeline records the right "from" values even after a reverse.
+        if (bulb) gsap.set(bulb, { opacity: 0.08 });
+        if (filament) gsap.set(filament, { opacity: 0.16 });
+        if (halo) gsap.set(halo, { opacity: 0 });
+        if (cone) gsap.set(cone, { opacity: 0 });
+
+        const timeline = gsap.timeline({ paused: true });
+
+        if (rocker) {
+          timeline.to(rocker, { y: 18, duration: 0.18, ease: 'power3.in' }, 0);
+        }
+        timeline.add(() => setOn(!timeline.reversed()), 0.16);
+        if (click) {
+          timeline
+            .to(click, { opacity: 0.35, duration: 0.1 }, 0.16)
+            .to(click, { opacity: 0, duration: 0.2 }, 0.26);
+        }
+        if (filament) {
+          timeline.add(flickerOn(filament, { glow: halo ?? undefined, duration: 0.5 }), 0.3);
+        }
+        if (bulb) {
+          timeline.to(bulb, { opacity: 0.9, duration: 0.45, ease: 'power2.out' }, 0.5);
+        }
+        if (cone) {
+          timeline.to(cone, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0.55);
+        }
+        timeline.to(
+          card,
+          { opacity: 1, y: 0, clipPath: CARD_SHOWN, duration: 0.75, ease: 'back.out(1.1)' },
+          0.7
         );
-        timeline.to(sweep, { opacity: 0, duration: 0.2 }, 1.7);
-      }
+        if (sweep) {
+          timeline.fromTo(
+            sweep,
+            { xPercent: -120, opacity: 0 },
+            { xPercent: 260, opacity: 1, duration: 0.8, ease: EASE.quart },
+            1.05
+          );
+          timeline.to(sweep, { opacity: 0, duration: 0.2 }, 1.7);
+        }
 
-      const play = () => {
-        if (timeline.progress() === 1 && !timeline.reversed()) return;
-        timeline.play();
+        const play = () => {
+          if (timeline.progress() === 1 && !timeline.reversed()) return;
+          timeline.play();
+        };
+        const rewind = () => {
+          // Never pull content out from under the keyboard.
+          if (card && document.activeElement && card.contains(document.activeElement)) return;
+          timeline.reverse();
+        };
+
+        // `onToggle` + `onRefresh` rather than onEnter/onEnterBack: a refresh
+        // (pin spacers, fonts, resize) can land while the section is already on
+        // screen, and enter callbacks are suppressed during a refresh.
+        const enter = ScrollTrigger.create({
+          trigger: root,
+          start: 'top 60%',
+          end: 'bottom top',
+          onToggle: (self) => {
+            if (self.isActive) play();
+          },
+          onRefresh: (self) => {
+            if (self.isActive) play();
+          },
+        });
+
+        const leave = ScrollTrigger.create({
+          trigger: root,
+          start: 'top bottom',
+          end: 'bottom top',
+          onToggle: (self) => {
+            if (!self.isActive) rewind();
+          },
+        });
+
+        // Safety net: if ScrollTrigger never fires but the section is on screen,
+        // show the finished scene anyway.
+        const safety = gsap.delayedCall(2.5, () => {
+          if (timeline.progress() > 0 || timeline.isActive()) return;
+          const rect = root.getBoundingClientRect();
+          if (rect.top >= window.innerHeight || rect.bottom <= 0) return;
+          // `progress()` is a seek: it suppresses callbacks, so mirror the
+          // switch/bulb state by hand.
+          timeline.progress(1);
+          setOn(true);
+        });
+
+        disposeScene = () => {
+          safety.kill();
+          enter.kill();
+          leave.kill();
+          timeline.kill();
+        };
       };
-      const rewind = () => {
-        // Never pull content out from under the keyboard.
-        if (card && document.activeElement && card.contains(document.activeElement)) return;
-        timeline.reverse();
-      };
 
-      // `onToggle` + `onRefresh` rather than onEnter/onEnterBack: a refresh
-      // (pin spacers, fonts, resize) can land while the section is already on
-      // screen, and enter callbacks are suppressed during a refresh.
-      const enter = ScrollTrigger.create({
-        trigger: root,
-        start: 'top 60%',
-        end: 'bottom top',
-        onToggle: (self) => {
-          if (self.isActive) play();
-        },
-        onRefresh: (self) => {
-          if (self.isActive) play();
-        },
-      });
-
-      const leave = ScrollTrigger.create({
-        trigger: root,
-        start: 'top bottom',
-        end: 'bottom top',
-        onToggle: (self) => {
-          if (!self.isActive) rewind();
-        },
-      });
-
-      // Safety net: if ScrollTrigger never fires but the section is on screen,
-      // show the finished scene anyway.
-      const safety = gsap.delayedCall(2.5, () => {
-        if (timeline.progress() > 0 || timeline.isActive()) return;
-        const rect = root.getBoundingClientRect();
-        if (rect.top >= window.innerHeight || rect.bottom <= 0) return;
-        // `progress()` is a seek: it suppresses callbacks, so mirror the
-        // switch/bulb state by hand.
-        timeline.progress(1);
-        setOn(true);
-      });
+      const disposeNear = whenNear(root, buildScene);
 
       return () => {
-        safety.kill();
-        enter.kill();
-        leave.kill();
-        timeline.kill();
+        disposeNear();
+        disposeScene?.();
       };
     },
     { dependencies: [reduced], revertOnUpdate: true }

@@ -3,13 +3,15 @@ import { site } from '../config/site';
 import { useLenis } from '../components/SmoothScroll';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
-import { ScrollTrigger, gsap, unveil, useGSAP } from '../motion/motion';
+import { ScrollTrigger, gsap, unveil, useGSAP, whenNear } from '../motion/motion';
 import { flickerFault } from '../motion/flicker';
 import type { CurrentPathHandle, SparksHandle } from '../motion/types';
 import { CircuitSvg } from './anatomy/CircuitSvg';
 import { getCircuitLayout } from './anatomy/layout';
 
 const BEATS = ['fault', 'fix', 'flow'] as const;
+/** Samples taken along the rendered circuit path to locate each component. */
+const SAMPLES = 120;
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
@@ -88,203 +90,20 @@ export function Anatomy() {
         return undefined;
       }
 
-      // Where each component sits along the circuit path, measured from the
-      // rendered path so the two layouts need no hand-kept numbers.
-      const corePath = root.querySelector<SVGPathElement>(
-        '[data-testid="anatomy-stage"] path[data-core]'
-      );
-      const samples: { x: number; y: number }[] = [];
-      if (corePath) {
-        const total = corePath.getTotalLength();
-        for (let i = 0; i <= 240; i += 1) {
-          const point = corePath.getPointAtLength((total * i) / 240);
-          samples.push({ x: point.x, y: point.y });
-        }
-      }
-      const progressAt = (x: number, y: number) => {
-        let best = 0;
-        let bestDistance = Number.POSITIVE_INFINITY;
-        samples.forEach((point, index) => {
-          const distance = (point.x - x) ** 2 + (point.y - y) ** 2;
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            best = index / (samples.length - 1);
-          }
-        });
-        return best;
-      };
-      const nodeProgress = layout.nodes.map((item) => progressAt(item.x, item.y));
-
-      const node = (id: string) => root.querySelector<SVGGElement>(`[data-node="${id}"]`);
-      const part = (id: string, name: string) =>
-        root.querySelector<SVGElement>(`[data-node="${id}"] [data-part="${name}"]`);
-
-      // Baseline transforms: GSAP takes over the `transform` attribute the
-      // layout put on every component group.
-      for (const item of layout.nodes) {
-        const element = node(item.id);
-        if (!element) continue;
-        gsap.set(element, {
-          x: item.x,
-          y: item.y,
-          rotation: item.rotate,
-          transformOrigin: '50% 50%',
-          opacity: 0.5,
-        });
-      }
-
+      // ---------------------------------------------------------------- eager
+      // Only what the first paint and the reserved height depend on. The five
+      // step cards share one box (`.jv-card-stack`), so they must be dimmed
+      // before anything else runs.
       gsap.set(cards, { opacity: 0, y: 10 });
       gsap.set(cards[0], { opacity: 1, y: 0 });
       if (finalText) gsap.set(finalText, { opacity: 0, y: 10 });
-      if (arc) gsap.set(arc, { autoAlpha: 0 });
-      if (tape) gsap.set(tape, { autoAlpha: 0 });
-      currentRef.current?.setProgress(0);
 
+      // The spine: one empty tween fixes the master's duration at `segments`
+      // whether or not the scene has been built yet, so the pin distance and
+      // the segment→progress mapping never change (no reflow, no refresh, and
+      // `data-step`/`data-beat` are already correct while scrolling in).
       const master = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
-
-      layout.nodes.forEach((item, index) => {
-        const group = node(item.id);
-        if (!group) return;
-        const start = index * 3;
-        const halo = part(item.id, 'halo');
-        const previous = index === 0 ? 0 : nodeProgress[index - 1];
-
-        // --- beat 1: the fault shows itself -----------------------------
-        master.to(
-          group,
-          {
-            x: item.x + layout.lift.x,
-            y: item.y + layout.lift.y,
-            scale: 1.08,
-            opacity: 1,
-            duration: 0.45,
-            ease: 'power2.out',
-          },
-          start
-        );
-        if (halo) master.to(halo, { opacity: 0.55, duration: 0.45 }, start);
-        if (index > 0) master.to(cards[index - 1], { opacity: 0, y: -8, duration: 0.3 }, start);
-        master.fromTo(
-          cards[index],
-          { opacity: 0, y: 10 },
-          { opacity: 1, y: 0, duration: 0.4 },
-          start + 0.15
-        );
-
-        if (item.id === 'breaker') {
-          const lever = part('breaker', 'lever');
-          const flash = part('breaker', 'flash');
-          const indicator = part('breaker', 'indicator');
-          if (lever) master.to(lever, { y: 17, rotation: 7, duration: 0.3, ease: 'power3.in' }, start + 0.1);
-          if (flash) {
-            master
-              .to(flash, { opacity: 0.4, duration: 0.12 }, start + 0.32)
-              .to(flash, { opacity: 0, duration: 0.24 }, start + 0.44);
-          }
-          if (lever) master.to(lever, { y: 0, rotation: 0, duration: 0.45, ease: 'back.out(1.6)' }, start + 1.05);
-          if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 1.4);
-        }
-
-        if (item.id === 'rcd') {
-          const lever = part('rcd', 'lever');
-          const test = part('rcd', 'test');
-          const indicator = part('rcd', 'indicator');
-          const ok = part('rcd', 'ok');
-          if (lever) master.to(lever, { y: 19, duration: 0.28, ease: 'power3.in' }, start + 0.1);
-          if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 0.3);
-          if (test) {
-            master
-              .to(test, { scale: 0.72, duration: 0.2, transformOrigin: '50% 50%' }, start + 1.05)
-              .to(test, { scale: 1, duration: 0.3 }, start + 1.3);
-          }
-          if (indicator) master.to(indicator, { opacity: 0, duration: 0.25 }, start + 1.3);
-          if (lever) master.to(lever, { y: 0, duration: 0.45, ease: 'back.out(1.6)' }, start + 1.35);
-          if (ok) master.to(ok, { opacity: 1, duration: 0.3 }, start + 1.6);
-        }
-
-        if (item.id === 'cable') {
-          const left = group.querySelector<SVGPathElement>('path[stroke-width="11"]');
-          const copper = part('cable', 'copper');
-          const clip = part('cable', 'tape-clip');
-          if (left) master.to(left, { x: -5, duration: 0.3 }, start + 0.1);
-          if (copper) master.to(copper, { opacity: 1, duration: 0.3 }, start + 0.15);
-          if (arc) master.to(arc, { autoAlpha: 1, duration: 0.2 }, start + 0.2);
-          // fix: four turns of insulating tape, then the arc dies
-          if (arc) master.to(arc, { autoAlpha: 0, duration: 0.2 }, start + 1.05);
-          if (tape) master.to(tape, { autoAlpha: 1, duration: 0.15 }, start + 1.05);
-          if (clip) {
-            master.fromTo(
-              clip,
-              { attr: { width: 0, x: -26 } },
-              { attr: { width: 52 }, duration: 0.6, ease: 'steps(4)' },
-              start + 1.1
-            );
-          }
-          if (copper) master.to(copper, { opacity: 0, duration: 0.25 }, start + 1.5);
-          if (left) master.to(left, { x: 0, duration: 0.3 }, start + 1.5);
-        }
-
-        if (item.id === 'socket') {
-          const soot = part('socket', 'soot');
-          const oldSocket = part('socket', 'old-socket');
-          const newSocket = part('socket', 'new-socket');
-          const sweep = part('socket', 'sweep');
-          if (soot) master.to(soot, { opacity: 0.45, duration: 0.35 }, start + 0.15);
-          if (oldSocket) master.to(oldSocket, { x: -74, opacity: 0, duration: 0.45, ease: 'power2.in' }, start + 1.05);
-          if (newSocket) {
-            master.fromTo(
-              newSocket,
-              { x: 74, opacity: 0 },
-              { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' },
-              start + 1.35
-            );
-          }
-          if (sweep) {
-            master.fromTo(
-              sweep,
-              { x: 0, opacity: 0.28 },
-              { x: 68, opacity: 0, duration: 0.5 },
-              start + 1.7
-            );
-          }
-        }
-
-        if (item.id === 'lamp') {
-          const rocker = part('lamp', 'rocker');
-          if (rocker) master.to(rocker, { y: 7, duration: 0.25 }, start + 0.1);
-          if (rocker) master.to(rocker, { y: -7, duration: 0.35, ease: 'back.out(2)' }, start + 1.05);
-          // calm ignition — no flicker, the fault is fixed
-          if (bulb) master.to(bulb, { opacity: 0.85, duration: 0.55, ease: 'power2.out' }, start + 1.2);
-          if (filament) master.to(filament, { opacity: 1, duration: 0.5 }, start + 1.2);
-          if (bulbGlow) master.to(bulbGlow, { opacity: 0.75, duration: 0.6 }, start + 1.3);
-        }
-
-        // --- beat 3: the current moves on -------------------------------
-        const flow = currentRef.current?.timeline(previous, nodeProgress[index], { duration: 0.85 });
-        if (flow) master.add(flow, start + 2);
-        master.to(
-          group,
-          { x: item.x, y: item.y, scale: 1, opacity: 0.85, duration: 0.5, ease: 'power2.inOut' },
-          start + 2
-        );
-        if (halo) master.to(halo, { opacity: 0, duration: 0.5 }, start + 2);
-      });
-
-      // --- closing beat: everything lit ---------------------------------
-      const finalStart = steps.length * 3;
-      const tail = currentRef.current?.timeline(nodeProgress[nodeProgress.length - 1], 1, {
-        duration: 0.6,
-      });
-      if (tail) master.add(tail, finalStart);
-      for (const item of layout.nodes) {
-        const group = node(item.id);
-        if (group) master.to(group, { opacity: 1, duration: 0.5 }, finalStart);
-      }
-      const bulbNode = root.querySelector<SVGGElement>('[data-node="bulb"]');
-      if (bulbNode) master.to(bulbNode, { opacity: 1, duration: 0.5 }, finalStart);
-      if (bulbGlow) master.to(bulbGlow, { opacity: 1, duration: 0.6 }, finalStart + 0.2);
-      if (finalText) master.to(finalText, { opacity: 1, y: 0, duration: 0.5 }, finalStart + 0.3);
-      master.to({}, { duration: 0.2 }, segments - 0.2);
+      master.to({}, { duration: segments }, 0);
 
       // --- live (non-scrubbed) loops, owned by the beat state -----------
       let arcFlicker: gsap.core.Timeline | null = null;
@@ -359,7 +178,214 @@ export function Anatomy() {
       triggerRef.current = trigger;
       applyState();
 
+      // ----------------------------------------------------------------- lazy
+      // Everything below measures the circuit SVG or creates a tween on it.
+      // Doing it inside the hydration commit was the single biggest chunk of
+      // the ~440ms boot task (BRIEF §7: build heavy scenes near the viewport;
+      // the pin spacer above already reserves the height, so CLS stays 0).
+      const buildScene = () => {
+        // Where each component sits along the circuit path, measured from the
+        // rendered path so the two layouts need no hand-kept numbers.
+        const corePath = root.querySelector<SVGPathElement>(
+          '[data-testid="anatomy-stage"] path[data-core]'
+        );
+        const samples: { x: number; y: number }[] = [];
+        if (corePath) {
+          const total = corePath.getTotalLength();
+          for (let i = 0; i <= SAMPLES; i += 1) {
+            const point = corePath.getPointAtLength((total * i) / SAMPLES);
+            samples.push({ x: point.x, y: point.y });
+          }
+        }
+        const progressAt = (x: number, y: number) => {
+          let best = 0;
+          let bestDistance = Number.POSITIVE_INFINITY;
+          samples.forEach((point, index) => {
+            const distance = (point.x - x) ** 2 + (point.y - y) ** 2;
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              best = index / (samples.length - 1);
+            }
+          });
+          return best;
+        };
+        const nodeProgress = layout.nodes.map((item) => progressAt(item.x, item.y));
+
+        const node = (id: string) => root.querySelector<SVGGElement>(`[data-node="${id}"]`);
+        const part = (id: string, name: string) =>
+          root.querySelector<SVGElement>(`[data-node="${id}"] [data-part="${name}"]`);
+
+        // Baseline transforms: GSAP takes over the `transform` attribute the
+        // layout put on every component group.
+        for (const item of layout.nodes) {
+          const element = node(item.id);
+          if (!element) continue;
+          gsap.set(element, {
+            x: item.x,
+            y: item.y,
+            rotation: item.rotate,
+            transformOrigin: '50% 50%',
+            opacity: 0.5,
+          });
+        }
+
+        if (arc) gsap.set(arc, { autoAlpha: 0 });
+        if (tape) gsap.set(tape, { autoAlpha: 0 });
+        currentRef.current?.setProgress(0);
+
+        layout.nodes.forEach((item, index) => {
+          const group = node(item.id);
+          if (!group) return;
+          const start = index * 3;
+          const halo = part(item.id, 'halo');
+          const previous = index === 0 ? 0 : nodeProgress[index - 1];
+
+          // --- beat 1: the fault shows itself -----------------------------
+          master.to(
+            group,
+            {
+              x: item.x + layout.lift.x,
+              y: item.y + layout.lift.y,
+              scale: 1.08,
+              opacity: 1,
+              duration: 0.45,
+              ease: 'power2.out',
+            },
+            start
+          );
+          if (halo) master.to(halo, { opacity: 0.55, duration: 0.45 }, start);
+          if (index > 0) master.to(cards[index - 1], { opacity: 0, y: -8, duration: 0.3 }, start);
+          master.fromTo(
+            cards[index],
+            { opacity: 0, y: 10 },
+            { opacity: 1, y: 0, duration: 0.4 },
+            start + 0.15
+          );
+
+          if (item.id === 'breaker') {
+            const lever = part('breaker', 'lever');
+            const flash = part('breaker', 'flash');
+            const indicator = part('breaker', 'indicator');
+            if (lever) master.to(lever, { y: 17, rotation: 7, duration: 0.3, ease: 'power3.in' }, start + 0.1);
+            if (flash) {
+              master
+                .to(flash, { opacity: 0.4, duration: 0.12 }, start + 0.32)
+                .to(flash, { opacity: 0, duration: 0.24 }, start + 0.44);
+            }
+            if (lever) master.to(lever, { y: 0, rotation: 0, duration: 0.45, ease: 'back.out(1.6)' }, start + 1.05);
+            if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 1.4);
+          }
+
+          if (item.id === 'rcd') {
+            const lever = part('rcd', 'lever');
+            const test = part('rcd', 'test');
+            const indicator = part('rcd', 'indicator');
+            const ok = part('rcd', 'ok');
+            if (lever) master.to(lever, { y: 19, duration: 0.28, ease: 'power3.in' }, start + 0.1);
+            if (indicator) master.to(indicator, { opacity: 1, duration: 0.3 }, start + 0.3);
+            if (test) {
+              master
+                .to(test, { scale: 0.72, duration: 0.2, transformOrigin: '50% 50%' }, start + 1.05)
+                .to(test, { scale: 1, duration: 0.3 }, start + 1.3);
+            }
+            if (indicator) master.to(indicator, { opacity: 0, duration: 0.25 }, start + 1.3);
+            if (lever) master.to(lever, { y: 0, duration: 0.45, ease: 'back.out(1.6)' }, start + 1.35);
+            if (ok) master.to(ok, { opacity: 1, duration: 0.3 }, start + 1.6);
+          }
+
+          if (item.id === 'cable') {
+            const left = group.querySelector<SVGPathElement>('path[stroke-width="11"]');
+            const copper = part('cable', 'copper');
+            const clip = part('cable', 'tape-clip');
+            if (left) master.to(left, { x: -5, duration: 0.3 }, start + 0.1);
+            if (copper) master.to(copper, { opacity: 1, duration: 0.3 }, start + 0.15);
+            if (arc) master.to(arc, { autoAlpha: 1, duration: 0.2 }, start + 0.2);
+            // fix: four turns of insulating tape, then the arc dies
+            if (arc) master.to(arc, { autoAlpha: 0, duration: 0.2 }, start + 1.05);
+            if (tape) master.to(tape, { autoAlpha: 1, duration: 0.15 }, start + 1.05);
+            if (clip) {
+              master.fromTo(
+                clip,
+                { attr: { width: 0, x: -26 } },
+                { attr: { width: 52 }, duration: 0.6, ease: 'steps(4)' },
+                start + 1.1
+              );
+            }
+            if (copper) master.to(copper, { opacity: 0, duration: 0.25 }, start + 1.5);
+            if (left) master.to(left, { x: 0, duration: 0.3 }, start + 1.5);
+          }
+
+          if (item.id === 'socket') {
+            const soot = part('socket', 'soot');
+            const oldSocket = part('socket', 'old-socket');
+            const newSocket = part('socket', 'new-socket');
+            const sweep = part('socket', 'sweep');
+            if (soot) master.to(soot, { opacity: 0.45, duration: 0.35 }, start + 0.15);
+            if (oldSocket) master.to(oldSocket, { x: -74, opacity: 0, duration: 0.45, ease: 'power2.in' }, start + 1.05);
+            if (newSocket) {
+              master.fromTo(
+                newSocket,
+                { x: 74, opacity: 0 },
+                { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' },
+                start + 1.35
+              );
+            }
+            if (sweep) {
+              master.fromTo(
+                sweep,
+                { x: 0, opacity: 0.28 },
+                { x: 68, opacity: 0, duration: 0.5 },
+                start + 1.7
+              );
+            }
+          }
+
+          if (item.id === 'lamp') {
+            const rocker = part('lamp', 'rocker');
+            if (rocker) master.to(rocker, { y: 7, duration: 0.25 }, start + 0.1);
+            if (rocker) master.to(rocker, { y: -7, duration: 0.35, ease: 'back.out(2)' }, start + 1.05);
+            // calm ignition — no flicker, the fault is fixed
+            if (bulb) master.to(bulb, { opacity: 0.85, duration: 0.55, ease: 'power2.out' }, start + 1.2);
+            if (filament) master.to(filament, { opacity: 1, duration: 0.5 }, start + 1.2);
+            if (bulbGlow) master.to(bulbGlow, { opacity: 0.75, duration: 0.6 }, start + 1.3);
+          }
+
+          // --- beat 3: the current moves on -------------------------------
+          const flow = currentRef.current?.timeline(previous, nodeProgress[index], { duration: 0.85 });
+          if (flow) master.add(flow, start + 2);
+          master.to(
+            group,
+            { x: item.x, y: item.y, scale: 1, opacity: 0.85, duration: 0.5, ease: 'power2.inOut' },
+            start + 2
+          );
+          if (halo) master.to(halo, { opacity: 0, duration: 0.5 }, start + 2);
+        });
+
+        // --- closing beat: everything lit ---------------------------------
+        const finalStart = steps.length * 3;
+        const tail = currentRef.current?.timeline(nodeProgress[nodeProgress.length - 1], 1, {
+          duration: 0.6,
+        });
+        if (tail) master.add(tail, finalStart);
+        for (const item of layout.nodes) {
+          const group = node(item.id);
+          if (group) master.to(group, { opacity: 1, duration: 0.5 }, finalStart);
+        }
+        const bulbNode = root.querySelector<SVGGElement>('[data-node="bulb"]');
+        if (bulbNode) master.to(bulbNode, { opacity: 1, duration: 0.5 }, finalStart);
+        if (bulbGlow) master.to(bulbGlow, { opacity: 1, duration: 0.6 }, finalStart + 0.2);
+        if (finalText) master.to(finalText, { opacity: 1, y: 0, duration: 0.5 }, finalStart + 0.3);
+
+        // Catch up with wherever the pin already is, then re-derive the state.
+        if (trigger.progress > 0) master.progress(trigger.progress);
+        lastSegment = -1;
+        applyState();
+      };
+
+      const disposeNear = whenNear(pin, buildScene);
+
       return () => {
+        disposeNear();
         stopLoops();
         master.eventCallback('onUpdate', null);
         trigger.kill();

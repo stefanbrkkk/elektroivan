@@ -8,13 +8,23 @@ const PULSE_SPAN = 0.26;
 
 /**
  * Current flowing along an SVG path (docs/BRIEF.md §5.3), as one `<g>`:
- * a dark sheath, a thin copper hint, the energized core drawn with DrawSVG
- * (`0% → p%`), a blurred copy of the core for glow on ≥1024px only, and a
- * small pulse dot that rides the path (MotionPath) and stops exactly at the
- * energized end.
+ * a dark sheath, a thin copper hint, the energized core drawn `0% → p%`, a
+ * blurred copy of the core for glow on ≥1024px only, and a small pulse dot
+ * that rides the path (MotionPath) and stops exactly at the energized end.
  *
  * The energized length is driven imperatively (`setProgress`, `timeline`) so
  * scroll scrubbing never re-renders React.
+ *
+ * PERF (phase 3): the core is drawn with the `stroke-dashoffset` scrub BRIEF
+ * §5.3 allows instead of DrawSVG. DrawSVG re-measures its target on every
+ * tween init — `getBBox()`, then `style.strokeDasharray = 'none'`,
+ * `getTotalLength()`, restore — which is a write/read/write pair, i.e. two
+ * forced layouts of the whole document *per target per init*. Anatomy alone
+ * builds twelve such tweens and re-initialises them on every refresh; Process
+ * called `setProgress` on every scroll frame. Measuring the path length once
+ * per mount and writing only `stroke-dashoffset` afterwards is visually
+ * identical (the length is in user units, so it survives any resize) and
+ * costs no layout at all.
  */
 export const CurrentPath = forwardRef<CurrentPathHandle, CurrentPathProps>(function CurrentPath(
   {
@@ -56,20 +66,44 @@ export const CurrentPath = forwardRef<CurrentPathHandle, CurrentPathProps>(funct
       if (!root) return undefined;
 
       const core = root.querySelector<SVGPathElement>('[data-core]');
-      const glow = root.querySelector<SVGPathElement>('[data-core-glow]');
+      const glowPath = root.querySelector<SVGPathElement>('[data-core-glow]');
       const dot = root.querySelector<SVGCircleElement>('[data-pulse-dot]');
       if (!core) return undefined;
 
-      const cores: SVGPathElement[] = glow ? [core, glow] : [core];
+      const cores: SVGPathElement[] = glowPath ? [core, glowPath] : [core];
+
+      // The one and only geometry read. The glow is the same `d`, so its length
+      // is the core's — worth knowing, because `.jv-glow-lg` is `display: none`
+      // below 1024px (BRIEF §7) and measuring a hidden path is both expensive
+      // and wrong.
+      const length = core.getTotalLength() || 0;
+      const offsetAt = (value: number) => length * (1 - value);
+      for (const path of cores) {
+        path.style.strokeDasharray = `${length}px`;
+      }
+
       let current = progress;
+      // `null` until the first write, so the initial state is always applied.
+      let shown: boolean | null = null;
+
+      const setShown = (next: boolean) => {
+        if (next === shown) return;
+        shown = next;
+        gsap.set(cores, { autoAlpha: next ? 1 : 0 });
+      };
+
+      const draw = (value: number) => {
+        const offset = `${offsetAt(value)}px`;
+        for (const path of cores) {
+          path.style.strokeDashoffset = offset;
+        }
+      };
 
       const apply = (value: number) => {
         current = gsap.utils.clamp(0, 1, value);
-        gsap.set(cores, {
-          drawSVG: `0% ${current * 100}%`,
-          autoAlpha: current <= 0.002 ? 0 : 1,
-        });
-        if (dot && current <= 0.002) gsap.set(dot, { opacity: 0 });
+        setShown(current > 0.002);
+        draw(current);
+        if (dot && current <= 0.002) dot.style.opacity = '0';
       };
 
       apply(progress);
@@ -94,7 +128,7 @@ export const CurrentPath = forwardRef<CurrentPathHandle, CurrentPathProps>(funct
           ease: 'none',
           onUpdate: () => {
             if (current <= 0.002) {
-              gsap.set(dot, { opacity: 0 });
+              dot.style.opacity = '0';
               return;
             }
             const end = current;
@@ -106,10 +140,10 @@ export const CurrentPath = forwardRef<CurrentPathHandle, CurrentPathProps>(funct
             ) as { x: number; y: number };
             setX(point.x);
             setY(point.y);
-            gsap.set(dot, { opacity: 1 });
+            dot.style.opacity = '1';
           },
           onComplete: () => {
-            gsap.set(dot, { opacity: 0 });
+            dot.style.opacity = '0';
           },
         });
       };
@@ -123,18 +157,25 @@ export const CurrentPath = forwardRef<CurrentPathHandle, CurrentPathProps>(funct
               current = from + (to - from) * tl.progress();
             },
           });
-          tl.set(cores, { autoAlpha: 1 }, 0).fromTo(
+          // `set` rather than a callback: the master timeline is scrubbed, and
+          // GSAP suppresses callbacks on a seek but never a tween's own render.
+          tl.set(cores, { autoAlpha: 1 }, 0);
+          tl.fromTo(
             cores,
-            { drawSVG: `0% ${from * 100}%` },
-            { drawSVG: `0% ${to * 100}%`, ease: 'none', duration: 1, ...vars }
+            { strokeDashoffset: offsetAt(from) },
+            { strokeDashoffset: offsetAt(to), ease: 'none', duration: 1, ...vars },
+            0
           );
+          // From here the timeline's own `set` owns visibility; forget the
+          // cached state so the next imperative `apply` writes it again.
+          shown = null;
           return tl;
         },
         startPulse: () => startPulse(-1),
         stopPulse: () => {
           pulseTween?.kill();
           pulseTween = null;
-          if (dot) gsap.set(dot, { opacity: 0 });
+          if (dot) dot.style.opacity = '0';
         },
         pulseOnce: () => startPulse(0),
       };
@@ -188,9 +229,9 @@ export const CurrentPath = forwardRef<CurrentPathHandle, CurrentPathProps>(funct
         vectorEffect={vectorEffect}
       />
       {/* glow copy of the energized core — desktop only.
-          NOTE: no `vector-effect` on the two paths DrawSVG measures: Chromium
-          cannot measure a non-proportionally-scaled non-scaling-stroke path
-          and logs a console warning. */}
+          NOTE: no `vector-effect` on the two paths whose length is measured:
+          Chromium cannot measure a non-proportionally-scaled
+          non-scaling-stroke path and logs a console warning. */}
       <g className="jv-glow-lg">
         <path
           data-core-glow=""
