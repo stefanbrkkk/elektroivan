@@ -187,7 +187,7 @@ export const site = {
       'Brz dolazak, uredna instalacija i garancija na svaku intervenciju — od pregorelog osigurača do kompletne adaptacije.',
     ctaPrimary: 'Pošalji upit',
     ctaSecondary: 'Pogledaj usluge',
-    scrollHint: 'Skroluj dalje',
+    scrollHint: 'Priča se nastavlja',
   },
 
   trust: {
@@ -200,10 +200,13 @@ export const site = {
     marquee: [
       'Hitne intervencije',
       'Razvodne table',
-      'Instalacije',
+      'Nove instalacije',
       'Rasveta',
+      'Prekidači i utičnice',
       'Priključenje uređaja',
       'Dijagnostika kvarova',
+      'Adaptacije stanova',
+      'Osigurači i sklopke',
     ],
     demoNote: 'Demo podaci radi prikaza',
   },
@@ -359,7 +362,7 @@ export const site = {
       },
       {
         name: 'Marko S.',
-        area: 'Dorćol',
+        area: 'Zvezdara',
         text: 'Precizna dijagnoza, jasna cena unapred, bez naknadnih iznenađenja.',
         rating: 5,
       },
