@@ -156,3 +156,49 @@ Fixed M5, M6, the motion-engineer halves of M3, M9 and minor 11, plus minors 1, 
   crosses the drawing, so the watermark steps back instead to keep body text at full contrast.
 - **`.section` padding left at 5rem / 8rem.** DESIGN asks for ≥80/120px; the existing tokens already exceed that,
   so v2 only adds `position: relative` to the class rather than lowering the desktop rhythm.
+
+## v2 — motion-engineer
+
+- **The anatomy timeline is 25 units split 3 / 18 / 4**, i.e. 0–12 % taking apart, 12–84 % the five
+  fault/fix/flow beats (1.2 units each), 84–100 % putting back together — the exact split
+  docs/DESIGN.md §3.5 asks for. `e2e/motion.spec.ts` derives its scroll fractions from the same three
+  constants instead of hard-coding them, so the two can never drift. The consequence: the step shown
+  at `[0, .2, .4, .6, .8, 1]` of the pin is now `1,1,2,4,5,5` rather than `1,2,3,4,5,5`; the
+  assertion is unchanged, only the fixture moved.
+- **"Assembled" is the identity matrix, by construction.** Every part is
+  `<g transform="translate(x y)"><g data-part-id>…</g></g>`: the static placement sits on the outer
+  group and the animated inner group starts with no `transform` attribute at all. That is what makes
+  "at 100 % every part is back within 0.5px" a cheap, exact assertion (`transform.baseVal
+  .consolidate()`), and it is why the layout table carries explosion *deltas* rather than absolute
+  exploded positions.
+- **Paint order is assembly order.** The parts array is ordered box → rail → modules → bars → door
+  and frame → insert → cover, because SVG has no z-index: the first cut drew the door before the
+  bars and the socket cover before the mechanism, so at 100 % the bars punched through the closed
+  door and the cover was invisible.
+- **`invalidateOnRefresh` is off on the anatomy trigger.** Every tween value in the scene is in SVG
+  user units, so a resize cannot invalidate any of them — only `end: () => …` needs re-evaluating,
+  and that happens regardless. This also pins DrawSVG to exactly one measurement pass for the 14
+  leader lines (phase 3's finding was that re-init is what made DrawSVG expensive, not DrawSVG).
+- **The five current-flow targets are declared, not measured.** `diorama.ts` carries
+  `flow: [0.08, 0.17, …]`; v1 sampled the rendered path 120 times and ran a nearest-point search per
+  component. Declared numbers are monotonic by construction (the breaker and the RCD both sit near
+  the start of the path, where a nearest-point search returns the same progress twice) and cost no
+  geometry reads.
+- **Part markings and leader-label names are hardcoded in the SVGs.** `B16`, `30 mA`, `6kA`,
+  `FID 40A`, `I`/`0`, `RT · 1F` and `01 Kutija` … `14 Sijalica` are printed text on a drawn
+  component, the SVGs are `aria-hidden`, and `src/config/site.ts` is frozen during parallel work —
+  while docs/DESIGN.md §3.3/§3.5 specifies those exact strings. No site copy was invented.
+- **The finale rocker tips with `scaleY: 1 → -1`, not a slide.** The tween passes through the flat
+  middle and lands with the lit edge at the bottom and the shade at the top, which is what a real
+  rocker does; a `y` offset on a plain rectangle was the one part of the finale that still read as a
+  `<div>`.
+- **One `<Materials />` per section, not per SVG.** SVG `url(#id)` references resolve document-wide,
+  so `ProcessGlyphDefs` renders the defs once for all four glyphs and the contact switch reuses the
+  pendant's. Eight copies of twenty gradients were pure hydration cost.
+- **The hero DIN group sits below the text on phones** (default grid order, no `order-first`), so it
+  cannot overlap the H1. The H1 stays three lines at 360 — one word per line is the design (each
+  word is its own neon tube with its own capped flicker), and no single word wraps at that width.
+- **The phone diorama shows part numbers only.** At `0 0 360 470` rendered inside a 42svh cap, the
+  14 names cannot be set legibly; the numbers stay, the names are desktop-only. The parts counter
+  („Delovi: 14“) moved into the stage's own top-right corner so the pinned controls row stays
+  `counter + five 44px dots` and the 360×640 no-overlap gate is untouched.

@@ -4,7 +4,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { CurrentPath } from '../motion/CurrentPath';
-import { ProcessGlyph } from '../motion/ProcessGlyphs';
+import { ProcessGlyph, ProcessGlyphDefs } from '../motion/ProcessGlyphs';
 import { ScrollTrigger, gsap, useGSAP } from '../motion/motion';
 import type { CurrentPathHandle } from '../motion/types';
 
@@ -113,6 +113,7 @@ export function Process() {
 
   return (
     <section id="kako-radim" ref={rootRef} data-testid="section-process" className="section relative">
+      <ProcessGlyphDefs />
       {horizontal ? null : header}
 
       {horizontal ? (

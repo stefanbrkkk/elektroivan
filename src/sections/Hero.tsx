@@ -174,7 +174,7 @@ export function Hero() {
       id="pocetak"
       ref={rootRef}
       data-testid="section-hero"
-      className="section min-h-app relative flex items-center overflow-hidden pt-10 md:pt-16"
+      className="section min-h-app relative flex items-center overflow-hidden pt-8 md:pt-16"
     >
       <div
         data-hero-field=""
@@ -227,7 +227,7 @@ export function Hero() {
               {site.hero.tagline}
             </p>
 
-            <p data-hero-reveal="" className="jv-veil mt-6 max-w-xl text-lg leading-relaxed text-muted">
+            <p data-hero-reveal="" className="jv-veil mt-5 max-w-xl text-base leading-relaxed text-muted md:text-lg">
               {site.hero.subtitle}
             </p>
 
@@ -251,7 +251,7 @@ export function Hero() {
 
             {/* The story hint sits on the start of the cable that leaves the
                 breaker: a mono label with a pulse sliding down a short wire. */}
-            <div data-hero-reveal="" className="jv-veil mt-12 flex items-center gap-3">
+            <div data-hero-reveal="" className="jv-veil mt-8 flex items-center gap-3 md:mt-12">
               <svg width="10" height="40" viewBox="0 0 10 40" aria-hidden="true">
                 <line x1="5" y1="2" x2="5" y2="38" stroke="var(--color-line)" strokeWidth="2" strokeLinecap="round" />
                 <circle data-hero-hint-pulse="" cx="5" cy="8" r="3" fill="var(--color-volt)" opacity="0.9" />
@@ -263,7 +263,7 @@ export function Hero() {
           <div data-hero-reveal="" className="jv-veil">
             <HeroRail
               ref={cableRef}
-              className="jv-hero-rail mx-auto block h-auto w-full max-w-[300px] sm:max-w-[360px] lg:max-w-none"
+              className="jv-hero-rail mx-auto block h-auto w-full max-w-[230px] sm:max-w-[320px] lg:max-w-none"
             />
           </div>
         </div>

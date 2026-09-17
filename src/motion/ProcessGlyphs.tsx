@@ -10,10 +10,22 @@ const O = PART_OUTLINE;
  * part on the page: material gradient, near-black outline, top-left highlight,
  * bottom-right shade, real screw heads. Decorative only.
  */
+/**
+ * The gradients the four glyphs share. SVG `url(#id)` references resolve
+ * document-wide, so one copy per section is enough — rendering `<Materials />`
+ * inside every glyph would put the same 20 defs in the DOM four times over.
+ */
+export function ProcessGlyphDefs() {
+  return (
+    <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
+      <Materials />
+    </svg>
+  );
+}
+
 export function ProcessGlyph({ index, className }: { index: number; className?: string }) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true" focusable="false">
-      <Materials />
       {index === 0 ? <Message /> : null}
       {index === 1 ? <Multimeter /> : null}
       {index === 2 ? <Screwdriver /> : null}

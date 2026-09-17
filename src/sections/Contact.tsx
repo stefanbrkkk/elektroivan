@@ -336,8 +336,9 @@ export function Contact() {
             aria-hidden="true"
             className="relative mt-3 block h-24 w-24"
           >
+            {/* the pendant SVG above already put the shared material defs in
+                the document — `url(#id)` resolves document-wide. */}
             <svg viewBox="0 0 96 96" className="h-full w-full">
-              <Materials />
               <rect x="4" y="4" width="88" height="88" rx="10" fill="url(#m-polymer-light)" stroke="#0A0B10" strokeOpacity="0.6" strokeWidth="1.25" />
               <path d="M 12 6 H 84 M 6 12 V 84" fill="none" stroke="#FFFFFF" strokeOpacity="0.65" strokeWidth="1.6" strokeLinecap="round" />
               <path d="M 90 14 V 82 M 14 90 H 82" fill="none" stroke="#000000" strokeOpacity="0.3" strokeWidth="3.5" strokeLinecap="round" />
