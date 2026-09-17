@@ -1,0 +1,35 @@
+LH Run 1:
+
+> jovan-elektro@0.1.0 lh
+> node scripts/lighthouse.mts
+
+
+Lighthouse scores (mobile) for http://localhost:4173:
+  Performance: 97
+  Accessibility: 100
+  Best Practices: 100
+  SEO: 100
+
+LH Run 2:
+
+> jovan-elektro@0.1.0 lh
+> node scripts/lighthouse.mts
+
+
+Lighthouse scores (mobile) for http://localhost:4173:
+  Performance: 91
+  Accessibility: 100
+  Best Practices: 100
+  SEO: 100
+
+LH Run 3:
+
+> jovan-elektro@0.1.0 lh
+> node scripts/lighthouse.mts
+
+
+Lighthouse scores (mobile) for http://localhost:4173:
+  Performance: 88
+  Accessibility: 100
+  Best Practices: 100
+  SEO: 100

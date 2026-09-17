@@ -202,8 +202,10 @@ export function MainLine() {
       if (reduced) {
         setFill?.(1);
         ScrollTrigger.addEventListener('refreshInit', build);
+        ScrollTrigger.addEventListener('refresh', build);
         return () => {
           ScrollTrigger.removeEventListener('refreshInit', build);
+          ScrollTrigger.removeEventListener('refresh', build);
           disposeWatchers();
         };
       }
@@ -288,10 +290,28 @@ export function MainLine() {
         trigger = ScrollTrigger.create(scrollTriggerVars);
       }
 
+      // `refreshInit` fires before the triggers re-measure, so a resize that
+      // changes the pin distances leaves the path built against stale
+      // spacers. Rebuild once more when the cycle completes and re-apply the
+      // scrub progress against the new length.
+      const rebuildAfterRefresh = () => {
+        build();
+        const st = tween?.scrollTrigger ?? trigger;
+        if (tween && st) {
+          tween.invalidate().progress(st.progress);
+          progress = st.progress;
+          setFill?.(progress);
+        } else if (st) {
+          onUpdate(st);
+        }
+      };
+
       ScrollTrigger.addEventListener('refreshInit', build);
+      ScrollTrigger.addEventListener('refresh', rebuildAfterRefresh);
 
       return () => {
         ScrollTrigger.removeEventListener('refreshInit', build);
+        ScrollTrigger.removeEventListener('refresh', rebuildAfterRefresh);
         pulse?.kill();
         tween?.scrollTrigger?.kill();
         tween?.kill();

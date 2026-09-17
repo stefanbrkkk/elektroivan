@@ -1,0 +1,15 @@
+=== HTTP Status Codes ===
+GET / : 200
+GET /og.png : 200
+GET /favicon.svg : 200
+GET /apple-touch-icon.png : 200
+GET /robots.txt : 200
+
+=== HTML Content Checks ===
+<h1 count: 1
+Iskače? Treperi? Varniči? count: 1
+description meta count: 1
+og:image meta count: 1
+application/ld+json count: 1
+@type:Electrician count: 1
+

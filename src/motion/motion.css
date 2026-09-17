@@ -80,6 +80,10 @@
   left: 0;
   z-index: 5;
   pointer-events: none;
+  /* The inner svg keeps its previous size while the layer is collapsed to
+     measure the document; without this its overflow would still count
+     toward scrollHeight and the measurement would never shrink. */
+  overflow: hidden;
 }
 
 .jv-mainline {

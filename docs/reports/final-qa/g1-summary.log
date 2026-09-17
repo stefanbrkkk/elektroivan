@@ -1,0 +1,22 @@
+=== G1 Results ===
+Typecheck:
+
+> jovan-elektro@0.1.0 typecheck
+> tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit
+
+typecheck exit: 0
+
+Lint:
+
+> jovan-elektro@0.1.0 lint
+> eslint . --max-warnings 0
+
+lint exit: 0
+
+Build:
+
+✓ built in 65ms
+site.siteUrl is empty: skipping dist/sitemap.xml and the robots.txt Sitemap: line.
+Prerender complete: dist/index.html, dist/robots.txt
+build exit: 0
+
