@@ -1,0 +1,5 @@
+/                        200
+/og.png                  200
+/favicon.svg             200
+/apple-touch-icon.png    200
+/robots.txt              200
