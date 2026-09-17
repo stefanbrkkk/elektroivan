@@ -116,6 +116,7 @@ export interface SiteConfig {
     demoNote: string;
     pause: string;
     play: string;
+    ratingLabel: string;
   };
   faq: {
     eyebrow: string;
@@ -382,6 +383,7 @@ export const site = {
     demoNote: 'Demo utisci radi prikaza',
     pause: 'Pauziraj traku',
     play: 'Pokreni traku',
+    ratingLabel: 'od 5', // screen-reader suffix: "5 od 5"
   },
 
   faq: {
