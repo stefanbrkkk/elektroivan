@@ -1,14 +1,38 @@
-import { useState } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { site } from '../config/site';
 
 /**
- * Accessible accordion: real button/panel pairing, first item open by
- * default so content is visible without any interaction. Entrance stagger
- * and open/close easing are cosmetic additions builder may polish later;
- * none of it is required for the panels to work correctly.
+ * Accessible accordion (docs/BRIEF.md §6.10): real button/panel pairing,
+ * first item open by default, one open at a time. The panel height animates
+ * via a CSS grid-rows trick (0fr → 1fr) rather than a hard `hidden` toggle,
+ * so it can transition smoothly — the global reduced-motion rule collapses
+ * that transition to ~0ms automatically. ArrowUp/ArrowDown/Home/End move
+ * focus between triggers; Enter/Space toggle via native `<button>` semantics.
  */
 export function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  function focusTrigger(index: number) {
+    triggerRefs.current[index]?.focus();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const count = site.faq.items.length;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusTrigger((index + 1) % count);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusTrigger((index - 1 + count) % count);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusTrigger(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusTrigger(count - 1);
+    }
+  }
 
   return (
     <section id="pitanja" data-testid="section-faq" className="section">
@@ -26,13 +50,17 @@ export function Faq() {
               <div key={item.question}>
                 <h3>
                   <button
+                    ref={(el) => {
+                      triggerRefs.current[index] = el;
+                    }}
                     type="button"
                     id={triggerId}
                     data-testid="faq-trigger"
                     aria-expanded={isOpen}
                     aria-controls={panelId}
                     onClick={() => setOpenIndex(isOpen ? null : index)}
-                    className="focus-ring flex w-full items-center justify-between gap-4 py-5 text-left font-display text-lg font-semibold text-text"
+                    onKeyDown={(event) => handleKeyDown(event, index)}
+                    className="focus-ring flex min-h-11 w-full items-center justify-between gap-4 py-5 text-left font-display text-lg font-semibold text-text"
                   >
                     {item.question}
                     <span aria-hidden="true" className="font-mono text-arc">
@@ -45,10 +73,16 @@ export function Faq() {
                   data-testid="faq-panel"
                   role="region"
                   aria-labelledby={triggerId}
-                  hidden={!isOpen}
-                  className="pb-5 text-sm text-muted"
+                  aria-hidden={!isOpen}
+                  className="grid"
+                  style={{
+                    gridTemplateRows: isOpen ? '1fr' : '0fr',
+                    transition: 'grid-template-rows 0.3s var(--ease-out-quart)',
+                  }}
                 >
-                  {item.answer}
+                  <div className="overflow-hidden">
+                    <p className="pb-5 text-sm text-muted">{item.answer}</p>
+                  </div>
                 </div>
               </div>
             );

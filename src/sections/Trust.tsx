@@ -1,20 +1,51 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { site } from '../config/site';
 import { DemoBadge } from '../components/DemoBadge';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { gsap, useGSAP } from '../motion/motion';
 
 /**
- * Trust stats + services marquee. Count-up on scroll-in is motion-engineer's
- * phase 2 addition (docs/BRIEF.md §6.4); numbers are shown at their final
- * value here so the static/reduced-motion baseline is already correct.
- * The marquee loop is a plain CSS animation (no GSAP needed for a builder
- * file) and is frozen automatically by the global reduced-motion rule.
+ * Trust stats + services marquee (docs/BRIEF.md §6.4). Stats count up once
+ * on scroll-in (skipped entirely under reduced motion, which already shows
+ * the final values via SSR). The marquee is a seamless CSS loop (duplicate
+ * list, `translateX(-50%)`), paused on hover/focus and by an explicit
+ * toggle, and frozen automatically by the global reduced-motion rule.
  */
 export function Trust() {
-  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [manualPause, setManualPause] = useState(false);
+  const paused = hovered || manualPause;
+  const reducedMotion = usePrefersReducedMotion();
+
+  const sectionRef = useRef<HTMLElement>(null);
+  const valueRefs = useRef<Array<HTMLElement | null>>([]);
+
   const loopItems = [...site.trust.marquee, ...site.trust.marquee];
 
+  useGSAP(
+    () => {
+      if (reducedMotion) return;
+      site.trust.stats.forEach((stat, index) => {
+        const el = valueRefs.current[index];
+        if (!el) return;
+        const counter = { value: 0 };
+        el.textContent = `0${stat.suffix ?? ''}`;
+        gsap.to(counter, {
+          value: stat.value,
+          duration: 1.6,
+          ease: 'expo.out',
+          scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+          onUpdate: () => {
+            el.textContent = `${Math.round(counter.value)}${stat.suffix ?? ''}`;
+          },
+        });
+      });
+    },
+    { dependencies: [reducedMotion], scope: sectionRef }
+  );
+
   return (
-    <section id="poverenje" data-testid="section-trust" className="section">
+    <section ref={sectionRef} id="poverenje" data-testid="section-trust" className="section">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
         <div className="flex items-center justify-between gap-4">
           <p className="font-mono text-xs uppercase tracking-widest text-arc">{site.trust.eyebrow}</p>
@@ -22,10 +53,17 @@ export function Trust() {
         </div>
 
         <dl className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-3">
-          {site.trust.stats.map((stat) => (
+          {site.trust.stats.map((stat, index) => (
             <div key={stat.label}>
               <dt className="text-sm text-muted">{stat.label}</dt>
-              <dd data-testid="stat-value" className="font-mono text-4xl font-bold tabular-nums text-text md:text-5xl">
+              <dd
+                ref={(el) => {
+                  valueRefs.current[index] = el;
+                }}
+                data-testid="stat-value"
+                style={{ minWidth: `${String(stat.value).length + (stat.suffix?.length ?? 0)}ch` }}
+                className="inline-block font-mono text-4xl font-bold tabular-nums text-text md:text-5xl"
+              >
                 {stat.value}
                 {stat.suffix}
               </dd>
@@ -37,10 +75,10 @@ export function Trust() {
 
         <div
           className="relative mt-12 overflow-hidden border-y border-line py-4"
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-          onFocus={() => setPaused(true)}
-          onBlur={() => setPaused(false)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onFocus={() => setHovered(true)}
+          onBlur={() => setHovered(false)}
         >
           <ul
             data-testid="marquee"
@@ -61,11 +99,11 @@ export function Trust() {
         <button
           type="button"
           data-testid="marquee-toggle"
-          aria-pressed={paused}
-          onClick={() => setPaused((value) => !value)}
+          aria-pressed={manualPause}
+          onClick={() => setManualPause((value) => !value)}
           className="focus-ring mt-3 rounded-md border border-line px-3 py-1.5 text-xs text-muted"
         >
-          {paused ? site.testimonials.play : site.testimonials.pause}
+          {manualPause ? site.testimonials.play : site.testimonials.pause}
         </button>
       </div>
     </section>

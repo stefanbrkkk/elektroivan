@@ -76,4 +76,28 @@ test.describe('phase 1 smoke', () => {
     await expect(page.getByTestId('contact-phone')).toHaveCount(0);
     await expect(page.locator('a[href^="tel:"]')).toHaveCount(0);
   });
+
+  test('shows exactly six service cards and six FAQ trigger/panel pairs', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.getByTestId('service-card')).toHaveCount(6);
+    await expect(page.getByTestId('faq-trigger')).toHaveCount(6);
+    await expect(page.getByTestId('faq-panel')).toHaveCount(6);
+  });
+
+  test('trust stats, marquee, before/after slider and testimonial controls exist', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.getByTestId('stat-value')).toHaveCount(3);
+    await expect(page.getByTestId('marquee')).toHaveCount(1);
+    await expect(page.getByTestId('marquee-toggle')).toHaveCount(1);
+    await expect(page.getByTestId('ba-slider')).toHaveCount(1);
+    await expect(page.getByTestId('ba-handle')).toHaveCount(1);
+    await expect(page.getByTestId('testimonials-toggle')).toHaveCount(1);
+
+    const testimonialCards = await page.getByTestId('testimonial-card').count();
+    // Rows loop with an aria-hidden duplicate, so the DOM count is at least
+    // the number of real testimonials in site.ts.
+    expect(testimonialCards).toBeGreaterThanOrEqual(6);
+  });
 });

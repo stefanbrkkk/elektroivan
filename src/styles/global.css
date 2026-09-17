@@ -186,6 +186,160 @@
   .marquee-paused {
     animation-play-state: paused;
   }
+
+  /* Custom cursor (Cursor.tsx): fine pointer + full motion only. Native
+     cursor stays hidden on the page but is restored for text-entry
+     controls so typing/selecting never loses the caret affordance. */
+  html.cursor-none,
+  html.cursor-none body {
+    cursor: none;
+  }
+
+  html.cursor-none input,
+  html.cursor-none textarea,
+  html.cursor-none select,
+  html.cursor-none [contenteditable='true'] {
+    cursor: auto;
+  }
+
+  .cursor-dot,
+  .cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 70;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    will-change: transform;
+  }
+
+  .cursor-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background-color: var(--color-arc);
+  }
+
+  .cursor-ring {
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    border: 1px solid var(--color-arc);
+    transition:
+      width 0.2s ease,
+      height 0.2s ease,
+      opacity 0.2s ease,
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .cursor-ring[data-hover='true'] {
+    width: 54px;
+    height: 54px;
+    border-color: var(--color-volt);
+    background-color: color-mix(in srgb, var(--color-volt) 14%, transparent);
+  }
+
+  /* Services bento cards (Services.tsx): cursor spotlight + icon
+     micro-animations, fine pointer only so touch users lose nothing. */
+  .service-card {
+    position: relative;
+  }
+
+  .service-card .spotlight {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    /* The tilt transform lives on an inner wrapper, never on .service-card
+       itself — that element is also the GSAP scroll-reveal target, and two
+       systems writing the same `transform` property corrupt each other. */
+    .service-card .tilt-wrapper {
+      transition: transform 0.2s ease-out;
+    }
+
+    .service-card .spotlight {
+      background: radial-gradient(
+        220px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+        color-mix(in srgb, var(--color-volt) 16%, transparent),
+        transparent 70%
+      );
+      transition: opacity 0.25s ease;
+    }
+
+    .service-card:hover .spotlight,
+    .service-card:focus-visible .spotlight {
+      opacity: 1;
+    }
+
+    .icon-panel .lever {
+      transition: transform 0.25s var(--ease-out-quart);
+      transform-origin: 8px 7px;
+    }
+    .service-card:hover .icon-panel .lever,
+    .service-card:focus-visible .icon-panel .lever {
+      transform: rotate(-28deg);
+    }
+
+    .icon-lighting .bulb-glow {
+      transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+      opacity: 0;
+      transform: scale(0.8);
+      transform-origin: center;
+    }
+    .service-card:hover .icon-lighting .bulb-glow,
+    .service-card:focus-visible .icon-lighting .bulb-glow {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .icon-appliances .plug {
+      transition: transform 0.3s var(--ease-out-quart);
+    }
+    .service-card:hover .icon-appliances .plug,
+    .service-card:focus-visible .icon-appliances .plug {
+      transform: translateX(5px);
+    }
+
+    .icon-diagnostics .needle {
+      transition: transform 0.3s var(--ease-out-quart);
+      transform-origin: 12px 15px;
+    }
+    .service-card:hover .icon-diagnostics .needle,
+    .service-card:focus-visible .icon-diagnostics .needle {
+      transform: rotate(35deg);
+    }
+
+    .icon-emergency .spark {
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+      opacity: 0;
+      transform: translateY(2px) scale(0.6);
+      transform-origin: center;
+    }
+    .service-card:hover .icon-emergency .spark,
+    .service-card:focus-visible .icon-emergency .spark {
+      opacity: 1;
+      transform: translateY(-2px) scale(1);
+    }
+
+    .icon-wiring .wire-flow {
+      transition: stroke-dashoffset 0.5s var(--ease-out-quart);
+    }
+    .service-card:hover .icon-wiring .wire-flow,
+    .service-card:focus-visible .icon-wiring .wire-flow {
+      stroke-dashoffset: 0;
+    }
+  }
 }
 
 /* Keyframes are global declarations, not cascade-layered rules — no @layer needed. */

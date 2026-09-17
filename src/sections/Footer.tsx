@@ -1,6 +1,7 @@
 import { site } from '../config/site';
 import { useLenis } from '../components/SmoothScroll';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { scrollToHash } from '../lib/scroll';
 
 export function Footer() {
   const lenis = useLenis();
@@ -8,11 +9,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   function handleBackToTop() {
-    if (lenis) {
-      lenis.scrollTo(0, { immediate: reducedMotion });
-    } else if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
-    }
+    scrollToHash('#pocetak', lenis, reducedMotion);
   }
 
   return (

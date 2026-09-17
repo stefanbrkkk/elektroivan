@@ -2,6 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 const CHROMIUM_EXECUTABLE = '/opt/pw-browsers/chromium';
 
+// Default port/URL match `npm run preview`'s hardcoded 4173. Set PW_PORT to
+// run the webServer on a different port (e.g. when 4173 is already taken by
+// another agent's preview server), or PLAYWRIGHT_BASE_URL to point at an
+// already-running server entirely (skips launching a new webServer process).
+const PORT = process.env.PW_PORT ? Number(process.env.PW_PORT) : 4173;
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: 'e2e',
   outputDir: 'test-results',
@@ -10,14 +17,14 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: BASE_URL,
     locale: 'sr-Latn',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npm run preview',
-    url: 'http://localhost:4173',
+    command: `npx vite preview --port ${PORT} --strictPort`,
+    url: BASE_URL,
     reuseExistingServer: true,
   },
   projects: [
