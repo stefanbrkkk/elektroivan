@@ -33,7 +33,7 @@ Pre `test:e2e` i `lh` mora biti pokrenut produkcioni build (`npm run build`); Pl
 
 1. `vite build` — klijentski bandl u `dist/`.
 2. `vite build --ssr src/entry-server.tsx --outDir dist/server` — SSR bandl korišćen samo za prerenderovanje.
-3. `node scripts/prerender.mts` — renderuje `<App/>` u statičan HTML, ubacuje SEO metapodatke (title, opis, canonical, Open Graph, Twitter, JSON-LD) u `dist/index.html`, piše `dist/robots.txt` i `dist/sitemap.xml`, i na kraju briše `dist/server` (ne ide u deploy).
+3. `node scripts/prerender.mts` — renderuje `<App/>` u statičan HTML, ubacuje SEO metapodatke (title, opis, Open Graph, Twitter, JSON-LD) u `dist/index.html`, piše `dist/robots.txt`, i na kraju briše `dist/server` (ne ide u deploy). **`canonical` link, `dist/sitemap.xml` i `Sitemap:` red u `robots.txt` se ne generišu dok je `siteUrl` prazan** (relativan `<loc>`/canonical bi bio nevalidan) — pojavljuju se automatski čim se `siteUrl` popuni (vidi ispod).
 
 ## Objava na Vercel
 

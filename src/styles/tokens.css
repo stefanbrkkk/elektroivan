@@ -5,6 +5,12 @@
   --color-bg: #0a0b10;
   --color-surface: #13151e;
   --color-line: #262b3b;
+  /* Stronger boundary for outlined interactive controls (buttons, toggles):
+     `--color-line` alone is 1.40:1 against `--color-bg`, below WCAG 1.4.11's
+     3:1 for UI component boundaries (docs/reports/review-1.md minor 11).
+     60% (not the review's suggested 45%, which computes to ~2.37:1 — see
+     docs/DECISIONS.md) clears 3:1 with margin against `--color-bg`. */
+  --color-line-strong: color-mix(in srgb, var(--color-muted) 60%, transparent);
   --color-text: #f3f1ea;
   --color-muted: #9aa0b4;
   --color-volt: #ffb92b;

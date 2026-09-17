@@ -93,25 +93,37 @@ async function main(): Promise<void> {
   html = html.replace('<!--app-html-->', appHtml);
   await writeFile(distIndexPath, html, 'utf8');
 
+  // A sitemap with a relative <loc> (or a robots.txt Sitemap: line pointing
+  // at one) is invalid — both need an absolute URL. Skip writing either
+  // until `site.siteUrl` is filled in after the first production deploy
+  // (docs/BRIEF.md §8; minor 10, docs/reports/review-1.md).
   const robotsLines = ['User-agent: *', 'Allow: /'];
-  if (site.siteUrl) robotsLines.push(`Sitemap: ${site.siteUrl}/sitemap.xml`);
+  if (site.siteUrl) {
+    robotsLines.push(`Sitemap: ${site.siteUrl}/sitemap.xml`);
+  }
   await writeFile(path.join(rootDir, 'dist', 'robots.txt'), `${robotsLines.join('\n')}\n`, 'utf8');
 
-  const sitemap = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    '  <url>',
-    `    <loc>${escapeHtml(`${site.siteUrl || ''}/`)}</loc>`,
-    '  </url>',
-    '</urlset>',
-    '',
-  ].join('\n');
-  await writeFile(path.join(rootDir, 'dist', 'sitemap.xml'), sitemap, 'utf8');
+  if (site.siteUrl) {
+    const sitemap = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      '  <url>',
+      `    <loc>${escapeHtml(`${site.siteUrl}/`)}</loc>`,
+      '  </url>',
+      '</urlset>',
+      '',
+    ].join('\n');
+    await writeFile(path.join(rootDir, 'dist', 'sitemap.xml'), sitemap, 'utf8');
+  } else {
+    console.log('site.siteUrl is empty: skipping dist/sitemap.xml and the robots.txt Sitemap: line.');
+  }
 
   // The SSR bundle is only needed for this script; it must not ship.
   await rm(serverDir, { recursive: true, force: true });
 
-  console.log('Prerender complete: dist/index.html, dist/robots.txt, dist/sitemap.xml');
+  console.log(
+    `Prerender complete: dist/index.html, dist/robots.txt${site.siteUrl ? ', dist/sitemap.xml' : ''}`
+  );
 }
 
 main().catch((error: unknown) => {

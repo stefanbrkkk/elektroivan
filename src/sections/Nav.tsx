@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { site } from '../config/site';
 import { AnchorLink } from '../components/AnchorLink';
 import { useLenis } from '../components/SmoothScroll';
@@ -129,8 +129,15 @@ export function Nav() {
     lenis?.stop();
 
     const panel = menuRef.current;
-    const focusables = () =>
-      panel ? Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')) : [];
+    // The toggle button itself sits outside `#nav-menu` in the DOM, but
+    // `aria-modal` on the panel hides it from assistive tech while the
+    // dialog is open — it must still be part of the focus trap so Tab
+    // cycling can actually reach it (minor 5, docs/reports/review-1.md).
+    const focusables = () => {
+      const items = panel ? Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')) : [];
+      if (toggleRef.current) items.push(toggleRef.current);
+      return items;
+    };
     focusables()[0]?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -190,7 +197,7 @@ export function Nav() {
   const visuallyHidden = hidden && !open;
 
   const menuClassName = showMobilePanel
-    ? 'glass fixed inset-x-0 top-16 bottom-0 z-40 flex flex-col gap-1 overflow-y-auto p-4'
+    ? 'safe-bottom glass fixed inset-x-0 top-16 bottom-0 z-40 flex flex-col gap-1 overflow-y-auto p-4'
     : 'hidden gap-6 lg:flex lg:flex-row lg:items-center';
 
   return (
@@ -198,7 +205,7 @@ export function Nav() {
       ref={headerRef}
       id="navigacija"
       data-testid="section-nav"
-      className={`fixed inset-x-0 top-0 z-50 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${visuallyHidden ? '-translate-y-full' : 'translate-y-0'}`}
+      className={`safe-top fixed inset-x-0 top-0 z-50 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${visuallyHidden ? '-translate-y-full' : 'translate-y-0'}`}
     >
       <div className="glass mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
         <AnchorLink
@@ -217,6 +224,10 @@ export function Nav() {
           role={showMobilePanel ? 'dialog' : undefined}
           aria-modal={showMobilePanel ? true : undefined}
           className={menuClassName}
+          // `p-4` already gives every edge 1rem; on a notched phone this
+          // keeps that 1rem as the floor for the bottom edge and adds the
+          // real inset on top of it (see `.safe-bottom` in global.css).
+          style={showMobilePanel ? ({ '--safe-pb': '1rem' } as CSSProperties) : undefined}
         >
           {site.nav.links.map((link) => {
             const id = sectionId(link.href);
@@ -226,9 +237,9 @@ export function Nav() {
                 key={link.href}
                 href={link.href}
                 data-testid={`nav-link-${id}`}
-                aria-current={isActive ? 'true' : undefined}
+                aria-current={isActive ? 'location' : undefined}
                 onClick={closeMenu}
-                className={`focus-ring rounded-md px-3 py-3 text-base transition-colors lg:px-1 lg:py-1 lg:text-sm ${isActive ? 'text-text' : 'text-muted hover:text-text'}`}
+                className={`focus-ring relative rounded-md px-3 py-3 text-base transition-colors after:absolute after:inset-x-3 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-volt after:transition-opacity lg:px-1 lg:py-1 lg:text-sm lg:after:inset-x-1 ${isActive ? 'text-text after:opacity-100' : 'text-muted after:opacity-0 hover:text-text'}`}
               >
                 {link.label}
               </AnchorLink>

@@ -52,8 +52,11 @@ function NewPanel() {
     <svg viewBox="0 0 400 300" className="h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <rect width="400" height="300" fill="var(--color-surface)" />
       <rect x="40" y="40" width="320" height="220" rx="8" fill="var(--color-bg)" stroke="var(--color-line)" />
-      {/* A neat row of modern MCBs, each with a labelled circuit number */}
-      {Array.from({ length: 6 }).map((_, i) => (
+      {/* A neat row of modern MCBs, each with a labelled circuit number.
+          Five (not six) leaves room for the wider RCD module beside them
+          without overlapping it or overflowing the enclosure (minor 13,
+          docs/reports/review-1.md). */}
+      {Array.from({ length: 5 }).map((_, i) => (
         <g key={i}>
           <rect
             x={64 + i * 44}
@@ -79,10 +82,10 @@ function NewPanel() {
         </g>
       ))}
       {/* RCD (FID): a wider module with its own test button */}
-      <rect x="316" y="70" width="46" height="62" rx="3" fill="none" stroke="var(--color-volt)" strokeWidth={2} />
+      <rect x="310" y="70" width="46" height="62" rx="3" fill="none" stroke="var(--color-volt)" strokeWidth={2} />
       <rect x="330" y="80" width="18" height="12" rx="2" fill="var(--color-volt)" />
       <text
-        x="339"
+        x="333"
         y="148"
         textAnchor="middle"
         fontFamily="var(--font-mono)"
@@ -94,7 +97,7 @@ function NewPanel() {
       </text>
       {/* Tidy, bundled wiring fanning down to each circuit */}
       <path d="M200 132 V190" stroke="var(--color-line)" strokeWidth={3} fill="none" />
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: 5 }).map((_, i) => (
         <path
           key={i}
           d={`M200 190 L${81 + i * 44} 235`}

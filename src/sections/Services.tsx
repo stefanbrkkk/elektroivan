@@ -106,6 +106,11 @@ interface ServiceCardProps {
 function ServiceCard({ service }: ServiceCardProps) {
   const cardRef = useRef<HTMLElement>(null);
   const finePointer = useFinePointer();
+  const reducedMotion = usePrefersReducedMotion();
+  // Tilt + spotlight are continuous pointer-driven motion (BRIEF §5.2 removes
+  // this outright under reduced motion), so gate on both conditions, not
+  // fine-pointer alone.
+  const interactive = finePointer && !reducedMotion;
 
   function handlePointerMove(event: ReactPointerEvent<HTMLElement>) {
     const card = cardRef.current;
@@ -133,8 +138,8 @@ function ServiceCard({ service }: ServiceCardProps) {
       ref={cardRef}
       tabIndex={0}
       data-testid="service-card"
-      onPointerMove={finePointer ? handlePointerMove : undefined}
-      onPointerLeave={finePointer ? handlePointerLeave : undefined}
+      onPointerMove={interactive ? handlePointerMove : undefined}
+      onPointerLeave={interactive ? handlePointerLeave : undefined}
       className={`service-card focus-ring glass relative flex flex-col justify-between p-6 ${SIZE_CLASSES[service.size]}`}
     >
       <span className="spotlight" aria-hidden="true" />
@@ -146,7 +151,7 @@ function ServiceCard({ service }: ServiceCardProps) {
           wrapper sidesteps it entirely. */}
       <div
         className="tilt-wrapper relative z-[1] inline-block"
-        style={finePointer ? { transform: 'perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))' } : undefined}
+        style={interactive ? { transform: 'perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))' } : undefined}
       >
         <svg className={ICON_CLASSES[service.id]} width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
           {ICONS[service.id]}
@@ -200,7 +205,7 @@ export function Services() {
 
         <div
           ref={gridRef}
-          className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-flow-dense lg:auto-rows-[11rem] lg:grid-cols-4"
+          className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-flow-dense lg:auto-rows-[minmax(11rem,auto)] lg:grid-cols-4"
         >
           {site.services.items.map((service) => (
             <ServiceCard key={service.id} service={service} />
