@@ -188,7 +188,7 @@ export const site = {
       'Brz dolazak, uredna instalacija i garancija na svaku intervenciju — od pregorelog osigurača do kompletne adaptacije.',
     ctaPrimary: 'Pošalji upit',
     ctaSecondary: 'Pogledaj usluge',
-    scrollHint: 'Priča se nastavlja',
+    scrollHint: 'Prati struju',
   },
 
   trust: {

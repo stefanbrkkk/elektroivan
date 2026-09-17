@@ -26,11 +26,12 @@ export function SectionHeader({ sheet, eyebrow, title, intro, as = 'h2', align =
   const Title = as;
   return (
     <header className={`sheet-header ${align === 'center' ? 'sheet-header--center' : ''} ${className}`.trim()}>
-      <p className="sheet-label font-mono" aria-label={`List ${pad(sheet)} od ${pad(SHEETS)}: ${eyebrow}`}>
-        <span className="sheet-label__word">List</span>
-        <span className="sheet-label__num">{pad(sheet)}</span>
-        <span className="sheet-label__sep">/</span>
-        <span className="sheet-label__total">{pad(SHEETS)}</span>
+      <p className="sheet-label font-mono">
+        <span className="sr-only">{`List ${pad(sheet)} od ${pad(SHEETS)}: `}</span>
+        <span className="sheet-label__word" aria-hidden="true">List</span>
+        <span className="sheet-label__num" aria-hidden="true">{pad(sheet)}</span>
+        <span className="sheet-label__sep" aria-hidden="true">/</span>
+        <span className="sheet-label__total" aria-hidden="true">{pad(SHEETS)}</span>
         <span className="sheet-label__rule" aria-hidden="true" />
         <span className="sheet-label__eyebrow">{eyebrow}</span>
       </p>
