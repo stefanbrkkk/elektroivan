@@ -29,3 +29,20 @@
 | eslint | 10.10.0 |
 | typescript-eslint | 8.70.0 |
 | vercel (CLI, not installed) | 59.20.0 |
+
+## Scout findings (phase 0)
+
+All versions confirmed current (2026-09-17). Key findings:
+
+| Package | Status | Note |
+|---|---|---|
+| vite 8.3.0 | ✓ | ESM-first; HMR on file changes |
+| @vitejs/plugin-react 6.1.1 | ✓ | Auto JSX refresh; React 19 ready |
+| tailwindcss 4.3.3 + @tailwindcss/vite | ✓ | CSS-first with `@import "tailwindcss"; @theme {}` in CSS |
+| gsap 3.15.0 | ✓ | ScrollTrigger, SplitText, DrawSVGPlugin, MotionPathPlugin in public package; import as `gsap/ScrollTrigger` |
+| @gsap/react 2.1.2 | ✓ | useGSAP hook; peer: gsap ≥3.12.5, react ≥17 |
+| lenis 1.3.26 | ✓ | GSAP: `autoRaf:false`, `lenis.on('scroll', ScrollTrigger.update)`, `gsap.ticker.add(t=>lenis.raf(t*1000))` |
+| Fontsource 5.3.0 | ✓ | bricolage-grotesque: `wght.css`; instrument-serif: `latin-ext-400-italic.css`+`latin-400-italic.css`; geist/jetbrains-mono: `wght.css` |
+| @playwright/test 1.63.0 | ⚠ | Version OK, but expects Chromium revision 1243; preinstalled is 1194 — use `executablePath` override |
+| lighthouse 13.4.1 | ✓ | Mobile: `--form-factor=mobile`; CHROME_PATH env var for binary path |
+| Node 22.22.2 | ✓ | Supports .mts natively since 22.18; no tsx needed |
