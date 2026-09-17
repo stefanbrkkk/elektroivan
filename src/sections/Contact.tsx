@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { mailtoHref, site } from '../config/site';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { SectionHeader } from '../components/SectionHeader';
 import { Materials } from '../components/svg/Materials';
 import { CurrentPath } from '../motion/CurrentPath';
 import { Sparks } from '../motion/Sparks';
@@ -315,26 +316,28 @@ export function Contact() {
             />
           </svg>
 
-          {/* The last stretch of cable into the switch — beat 1. Its box is
-              `[data-mainline-end]`, so MainLine stops on its left edge and the
-              two read as one cable. */}
-          <svg
-            data-mainline-end=""
-            aria-hidden="true"
-            width="120"
-            height="20"
-            viewBox="0 0 120 20"
-            className="jv-contact-tail pointer-events-none absolute right-[calc(50%+46px)] top-[258px] z-10"
-          >
-            <CurrentPath ref={tailRef} d="M 0 10 H 120" strokeWidth={10} coreWidth={3.2} />
-          </svg>
+          {/* Dimensional wall switch with a real tilting rocker. The last
+              stretch of cable (beat 1) is anchored to the switch's own left
+              edge rather than to a magic offset (review-3 minor 15): its box is
+              `[data-mainline-end]`, so MainLine stops exactly there and the two
+              read as one cable. */}
+          <div className="relative mt-3 h-24 w-24">
+            <svg
+              data-mainline-end=""
+              aria-hidden="true"
+              width="120"
+              height="20"
+              viewBox="0 0 120 20"
+              className="jv-contact-tail pointer-events-none absolute right-full top-1/2 z-10 -translate-y-1/2"
+            >
+              <CurrentPath ref={tailRef} d="M 0 10 H 120" strokeWidth={10} coreWidth={3.2} />
+            </svg>
 
-          {/* Dimensional wall switch with a real tilting rocker. */}
           <div
             data-testid="contact-switch"
             data-on="false"
             aria-hidden="true"
-            className="relative mt-3 block h-24 w-24"
+            className="block h-full w-full"
           >
             {/* the pendant SVG above already put the shared material defs in
                 the document — `url(#id)` resolves document-wide. */}
@@ -356,6 +359,7 @@ export function Contact() {
               <rect data-contact-click="" x="4" y="4" width="88" height="88" rx="10" fill="#FFD36A" opacity="0" />
             </svg>
           </div>
+          </div>
         </div>
 
         <div
@@ -364,9 +368,14 @@ export function Contact() {
         >
           <span data-contact-sweep="" aria-hidden="true" className="jv-sweep" />
 
-          <p className="label-mono text-arc">{site.contact.eyebrow}</p>
-          <h2 className="display-lg mt-4 text-text">{site.contact.title}</h2>
-          <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">{site.contact.lead}</p>
+          {/* The finale carries the same sheet chrome as every other section —
+              List 09 / 10 (docs/DESIGN.md §3.12, review-3 MAJ-5). */}
+          <SectionHeader
+            sheet={9}
+            eyebrow={site.contact.eyebrow}
+            title={site.contact.title}
+            intro={site.contact.lead}
+          />
 
           <p className="label-mono mt-8">{site.contact.emailLabel}</p>
 

@@ -128,6 +128,14 @@
 }
 
 /* ------------------------------------------------------------------- hero */
+/* The DIN group's dimension line renders ~7px tall on a phone — below the
+   readable floor, so it is simply not drawn there (review-3 minor 12). */
+@media (max-width: 639px) {
+  .jv-dim {
+    display: none;
+  }
+}
+
 .jv-field {
   position: absolute;
   border-radius: 50%;

@@ -202,3 +202,17 @@ Fixed M5, M6, the motion-engineer halves of M3, M9 and minor 11, plus minors 1, 
   14 names cannot be set legibly; the numbers stay, the names are desktop-only. The parts counter
   („Delovi: 14“) moved into the stage's own top-right corner so the pinned controls row stays
   `counter + five 44px dots` and the 360×640 no-overlap gate is untouched.
+- **Anatomy callouts are placed by a solver, not by hand.** `placeLabels()` (`src/sections/anatomy/diorama.ts`)
+  is a pure greedy pass: outward from the diorama centre along each part's explode axis, then 16 directions ×
+  7 distances, accepting the first candidate that clears every part body by ≥13 user units and every already
+  placed label by a 20-unit band, falling back to the least-overlapping candidate. It reads no DOM (part body
+  sizes are declared as `bw`/`bh`), so it produces byte-identical output during prerender and after hydration and
+  costs nothing at runtime. Hand-tuned anchors were re-colliding every time the composition moved.
+- **The enclosure and its door are `soft` obstacles.** A callout may sit on their dark hatched face — arc text
+  reads perfectly against it, and treating two 280×300 bodies as hard obstacles walled off a third of the drawing
+  from the solver.
+- **Callouts paint above the parts, with a backing tag.** SVG has no z-index, and a label that a part covers is
+  worse than a label that covers a part; the `#0A0B10` 74 % tag behind each one keeps it legible either way.
+- **The anatomy diorama is `aria-hidden`.** It is an illustration of what the five step cards already say, and
+  `role="img"` forced an `aria-label` that either repeated the section `h2` or invented copy — and `site.ts` is
+  frozen. The cards, the counter and the dots carry the whole story for assistive tech.

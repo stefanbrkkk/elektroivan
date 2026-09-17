@@ -3,7 +3,7 @@ import { site } from '../config/site';
 import { AnchorLink } from '../components/AnchorLink';
 import { Sparks } from '../motion/Sparks';
 import { HeroRail } from '../motion/HeroRail';
-import { EASE, ScrollTrigger, gsap, isLateBoot, unveil, useGSAP } from '../motion/motion';
+import { EASE, ScrollTrigger, gsap, isLateBoot, isSmallOrCoarse, unveil, useGSAP } from '../motion/motion';
 import { flickerOn } from '../motion/flicker';
 import { onIntroDone } from '../motion/intro';
 import type { CurrentPathHandle, SparksHandle } from '../motion/types';
@@ -111,16 +111,20 @@ export function Hero() {
 
       const unsubscribe = onIntroDone(playIntro);
 
-      // Background: two amber fields drifting slowly, paused off screen.
+      // Background drift and the hint pulse are the only infinite per-element
+      // loops on the page; BRIEF §7 asks for none of them on phones, so they
+      // are not created at all there (review-3 minor 8).
+      const loops = !isSmallOrCoarse();
+
       const drift = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
-      if (fields[0]) {
+      if (loops && fields[0]) {
         drift.to(fields[0], { xPercent: 7, yPercent: -5, duration: 16, ease: 'sine.inOut' }, 0);
       }
-      if (fields[1]) {
+      if (loops && fields[1]) {
         drift.to(fields[1], { xPercent: -6, yPercent: 6, duration: 20, ease: 'sine.inOut' }, 0);
       }
 
-      const hint = hintPulse
+      const hint = loops && hintPulse
         ? gsap.timeline({ repeat: -1, repeatDelay: 0.5, paused: true }).fromTo(
             hintPulse,
             { y: 0, opacity: 0 },

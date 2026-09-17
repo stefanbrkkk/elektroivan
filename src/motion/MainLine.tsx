@@ -16,6 +16,8 @@ const PULSE_TRAVEL = 260;
  * Contact.tsx` and docs/reports/review-1.md M5.
  */
 const ARRIVAL_VIEWPORT_FRACTION = 0.75;
+/** `.container-x` max-width, in px (80rem). */
+const CONTENT_MAX_WIDTH = 1280;
 
 /**
  * Scroll distance from the top of the document at which the energized part has
@@ -126,7 +128,10 @@ export function MainLine() {
         const endElement = document.querySelector<HTMLElement>('[data-mainline-end]');
         if (!main || !hero || !endElement) return;
 
-        const contentWidth = Math.min(1152, viewportWidth - 48);
+        // `.container-x` is `max-width: 80rem` with `clamp(1rem, 4vw, 3rem)` of
+        // inline padding (src/styles/global.css) — the gutter maths has to use
+        // the same numbers or the cable drifts off the content box.
+        const contentWidth = Math.min(CONTENT_MAX_WIDTH, viewportWidth - 48);
         const gutter = Math.max(0, (viewportWidth - contentWidth) / 2);
         const baseX = gsap.utils.clamp(14, 54, gutter * 0.42);
         const amplitude = gsap.utils.clamp(6, 40, gutter * 0.26);

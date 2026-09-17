@@ -14,8 +14,14 @@ export function flickerOn(target: gsap.TweenTarget, options: FlickerOptions = {}
   const dim = 0.18 * intensity;
 
   const timeline = gsap.timeline();
+  // The opening `.set` is only free when the target is already at (or below)
+  // `dim` — otherwise it is a brightness change of its own and the sequence
+  // would be four, not three (docs/reports/review-3.md minor 9). When the
+  // target is already lit the timeline simply starts from where it is.
+  const first = gsap.utils.toArray<Element>(target)[0];
+  const current = first ? Number(gsap.getProperty(first, 'opacity')) : 0;
+  if (!first || current <= dim + 0.02) timeline.set(target, { opacity: dim });
   timeline
-    .set(target, { opacity: dim })
     // change 1 — spark up
     .to(target, { opacity: 1, duration: step * 0.4, ease: 'power1.out' })
     // change 2 — drop back

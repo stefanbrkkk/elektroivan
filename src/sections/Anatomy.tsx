@@ -418,6 +418,9 @@ export function Anatomy() {
           master.to(leaderLabels, { opacity: 0, duration: ASSEMBLE * 0.2 }, ASSEMBLE_START);
         }
         if (leaders) master.to(leaders, { opacity: 0, duration: ASSEMBLE * 0.3 }, ASSEMBLE_START);
+        if (partsRef.current) {
+          master.to(partsRef.current, { opacity: 0, duration: ASSEMBLE * 0.3 }, ASSEMBLE_START);
+        }
         layout.parts.forEach((p, index) => {
           const group = inner(p.id);
           if (!group) return;
@@ -545,14 +548,18 @@ export function Anatomy() {
   );
 
   const stage = (
-    <Diorama
-      layout={layout}
-      lit={reduced}
-      sparks={sparks}
-      current={currentRef}
-      label={site.anatomy.title}
-    />
+    <Diorama layout={layout} lit={reduced} sparks={sparks} current={currentRef} />
   );
+
+  // The stage: drawing first, closing line directly under it (never floating in
+  // the stage's bottom inset — review-3 minor 3).
+  const stageBlock = (
+    <div className="flex w-full flex-col items-center gap-1">
+      {stage}
+      {finalLine}
+    </div>
+  );
+
 
   return (
     <section
@@ -573,7 +580,7 @@ export function Anatomy() {
       </div>
 
       {reduced ? (
-        <div className="container-x mt-10 grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="container-x mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
           <div data-testid="anatomy-stage" className="corner-marks relative flex items-center justify-center p-4">
             <span className="corner-marks__b" aria-hidden="true" />
             {partsTag}
@@ -588,18 +595,15 @@ export function Anatomy() {
       ) : (
         <div
           ref={pinRef}
-          className="min-h-app container-x mt-8 flex flex-col justify-center gap-3 py-4 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-center lg:gap-10"
+          className="min-h-app container-x mt-8 flex flex-col justify-center gap-3 py-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:items-center lg:gap-10"
         >
           <div
             data-testid="anatomy-stage"
-            className="corner-marks relative flex items-center justify-center p-2 md:p-4 lg:min-h-[58svh]"
+            className="corner-marks relative flex items-center justify-center p-1 md:p-2"
           >
             <span className="corner-marks__b" aria-hidden="true" />
             {partsTag}
-            {stage}
-            <div className="pointer-events-none absolute inset-x-3 bottom-1 flex justify-center">
-              {finalLine}
-            </div>
+            {stageBlock}
           </div>
           <div className="flex flex-col gap-3">
             {controls}

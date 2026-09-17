@@ -282,7 +282,36 @@ anatomy-step3,anatomy-finale,process,contact}-1440.png`:
 
 ---
 
-## 11. Open
+## 11. Supervisor review + review-3 pass
+
+| item | fix |
+|---|---|
+| labels collide with parts and each other (both layouts) | `placeLabels()` in `diorama.ts`: a pure, deterministic greedy pass. Each callout is pushed outward from the diorama centre along its part's explode axis, then searched over 16 directions × 7 distances, ordered by distance and by angular deviation. A candidate is accepted when its box clears every part body by ≥13 units and every placed label by a full 20-unit band; otherwise the least-overlapping candidate wins. Part bodies are declared (`bw`/`bh`) so the pass costs no DOM reads. The enclosure and its door are `soft` — a callout may sit on their dark hatched face, which is where a third of the free space is. Leaders are drawn to the part's **nearest box edge**, not its centre. |
+| MAJ-1 callouts painted under the parts | `<g data-leaders>` now renders **after** the parts map, and every label carries a `#0A0B10` 74 % backing tag, so it is legible wherever the pass had to park it. Selectors (`[data-leader-line]`, `[data-leader-label]`) unchanged. |
+| MAJ-3 stage reads empty / drawing small | Desktop viewBox cropped from `760×620` to `764×474` (the assembled ink box + a callout ring), the grid widened from `3fr/2fr` to `1fr/400px`, `lg:min-h-[58svh]` dropped so the stage hugs the drawing, stage padding `p-2 md:p-4` → `p-1 md:p-2`. The assembled installation went from ~66 % to ~73 % of the stage height and ~9 % larger in absolute px; with „Spojeno. Bez varnica.“ now sitting directly under it, the framed stage is ~92 % full. |
+| MAJ-4 soot is an orange blob | `data-part="soot"` is a dark radial-gradient smudge (`#07080C`, feathered to transparent) with two thin `--color-fault` scorch rims. The fault colour marks the state, not the surface. |
+| MAJ-5 finale has no sheet chrome | `SectionHeader sheet={9}` inside the glass card (eyebrow + title + lead); the hand-rolled eyebrow/`h2` pair is gone. All `contact-*` testids unchanged. |
+| minor 1 aria duplication | The diorama SVG is `aria-hidden` + `focusable="false"` instead of `role="img"` with the section's own `h2` text. The five cards carry the content; no new copy invented (`site.ts` is frozen). |
+| minor 2 `Delovi: 14` through the finale | Fades with the leaders at `ASSEMBLE_START`. |
+| minor 3 `anatomy-final` floating | Moved out of the stage's bottom inset into a `flex-col` directly under the drawing. |
+| minor 4 bare numbers on phones | `labelIds` limits the phone callouts to the five parts the story is about, and they now carry their names at 11 units. |
+| minor 5 cable over card 01 | Track pads `lg:pl-28` on top of `px-[6vw]`, leaving the cable's strip free. |
+| minor 6 gutter constant drift | `CONTENT_MAX_WIDTH = 1280` (= `.container-x`'s 80rem), was 1152. |
+| minor 7 saturated terminals | The copper is now the clamp *inside* the well (inset 6, opacity 0.78) with a dark rim; the steel screw still sits on top. |
+| minor 8 infinite loops on phones | The hero's field drift and hint pulse are not created at all when `isSmallOrCoarse()`. |
+| minor 9 flicker's opening `.set` | Only emitted when the target is already at or below `dim`; otherwise the timeline starts from the current value. Either way ≤3 brightness changes. |
+| minor 12 phone dimension label | `.jv-dim` is `display: none` below 640px. |
+| minor 15 magic `top-[258px]` | The stub is `absolute right-full top-1/2` inside a wrapper around the switch, so `[data-mainline-end]` is the switch's own left edge at any pendant size. |
+
+Not mine: MAJ-2 (`SectionHeader` aria), minor 10/11/13/14 (builder), minor 16 (`site.hero.scrollHint`, supervisor).
+
+Re-verified: typecheck/lint/build clean · `motion.spec + smoke.spec` d1440+m390 **32 passed / 2 skipped** ·
+`npm run lh` ×3 → Performance **86 / 86 / 87**, Accessibility 100, Best Practices 100, SEO 100 · CLS 0 ·
+shots re-captured in `docs/reports/v2-motion/`.
+
+---
+
+## 12. Open
 
 - The prerendered document is large (226 kB / 27 kB gzipped) and the Lighthouse Performance floor
   across six runs was 85 — at the gate, not above it. If it needs headroom, the lever is the

@@ -1,11 +1,11 @@
-import { useId, type ReactNode, type RefObject } from 'react';
+import { useId, useMemo, type ReactNode, type RefObject } from 'react';
 import { Materials } from '../../components/svg/Materials';
 import { PART_OUTLINE } from '../../components/svg/part-style';
 import { CurrentPath } from '../../motion/CurrentPath';
 import { Sparks } from '../../motion/Sparks';
 import { DinRail, Mcb, Rcd, Screw, Terminal, TerminalBar } from '../../motion/parts';
 import type { CurrentPathHandle, SparksHandle } from '../../motion/types';
-import type { DioramaLayout, DioramaPart } from './diorama';
+import { placeLabels, type DioramaLayout, type DioramaPart, type PlacedLabel } from './diorama';
 
 export interface DioramaSparkRefs {
   breaker: RefObject<SparksHandle | null>;
@@ -19,7 +19,6 @@ interface DioramaProps {
   lit: boolean;
   sparks: DioramaSparkRefs;
   current: RefObject<CurrentPathHandle | null>;
-  label: string;
 }
 
 const O = PART_OUTLINE;
@@ -157,9 +156,16 @@ function Cable({ sparks, lit, tapeId }: { sparks: RefObject<SparksHandle | null>
 
 /* ----------------------------------------------------------------- socket */
 
-function SocketCover({ sparks }: { sparks: RefObject<SparksHandle | null> }) {
+function SocketCover({ sparks, sootId }: { sparks: RefObject<SparksHandle | null>; sootId: string }) {
   return (
     <g>
+      <defs>
+        <radialGradient id={`jv-soot-${sootId}`}>
+          <stop offset="0%" stopColor="#07080C" stopOpacity="0.95" />
+          <stop offset="62%" stopColor="#07080C" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#07080C" stopOpacity="0" />
+        </radialGradient>
+      </defs>
       <rect x={-42} y={-42} width={84} height={84} rx={8} fill="url(#m-polymer-light)" stroke={O.stroke} strokeOpacity={O.strokeOpacity} strokeWidth={O.strokeWidth} />
       <path d="M -36 -40 H 36 M -40 -36 V 36" fill="none" stroke="#FFFFFF" strokeOpacity={0.6} strokeWidth={1.4} strokeLinecap="round" />
       <path d="M 39 -34 V 34 M -34 39 H 34" fill="none" stroke="#000000" strokeOpacity={0.28} strokeWidth={3} strokeLinecap="round" />
@@ -170,7 +176,13 @@ function SocketCover({ sparks }: { sparks: RefObject<SparksHandle | null> }) {
       <circle cx={11} cy={0} r={5.5} fill="#07080C" />
       {/* earth clips */}
       <path d="M -9 -25.5 h 18 M -9 25.5 h 18" stroke="url(#m-steel)" strokeWidth={4.5} strokeLinecap="round" />
-      <ellipse data-part="soot" cx={2} cy={-6} rx={26} ry={18} fill="#FF6A3D" opacity={0} />
+      {/* Soot is soot: a dark feathered smudge. The fault colour is spent on a
+          thin scorch rim, not on the whole surface (review-3 MAJ-4). */}
+      <g data-part="soot" opacity={0}>
+        <ellipse cx={2} cy={-6} rx={27} ry={19} fill={`url(#jv-soot-${sootId})`} />
+        <ellipse cx={2} cy={-6} rx={22} ry={15} fill="none" stroke="#FF6A3D" strokeOpacity={0.55} strokeWidth={1.6} />
+        <ellipse cx={2} cy={-6} rx={13} ry={9} fill="none" stroke="#FF6A3D" strokeOpacity={0.3} strokeWidth={1.2} />
+      </g>
       <rect data-part="sweep" x={-48} y={-42} width={14} height={84} fill="#FFFFFF" opacity={0} />
       <Sparks ref={sparks} as="g" count={10} spread={20} transform="translate(0 2)" />
     </g>
@@ -295,26 +307,40 @@ function Bulb({ lit, gradientId }: { lit: boolean; gradientId: string }) {
 
 /* ------------------------------------------------------------------ chrome */
 
-function Leader({ part, k }: { part: DioramaPart; k: number }) {
-  const sx = (part.x + part.ex) * 1;
-  const sy = (part.y + part.ey) * 1;
-  const { lx, ly, anchor } = part;
-  const cx = (sx + lx) / 2 + (ly - sy) * 0.12;
-  const cy = (sy + ly) / 2 + (sx - lx) * 0.12;
-  const tick = anchor === 'end' ? -1 : 1;
-  const size = k < 1 ? 11 : 14;
+function Leader({ label, size, withName }: { label: PlacedLabel; size: number; withName: boolean }) {
   return (
     <g data-leader="">
-      <path data-leader-line="" d={`M ${sx} ${sy} Q ${cx} ${cy} ${lx} ${ly}`} fill="none" stroke="#8FD8FF" strokeOpacity={0.5} strokeWidth={1.2} strokeLinecap="round" />
+      <path
+        data-leader-line=""
+        d={`M ${label.sx.toFixed(1)} ${label.sy.toFixed(1)} Q ${label.cx.toFixed(1)} ${label.cy.toFixed(1)} ${label.lx.toFixed(1)} ${label.ly.toFixed(1)}`}
+        fill="none"
+        stroke="#8FD8FF"
+        strokeOpacity={0.5}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
       <g data-leader-label="" opacity={0}>
-        <circle cx={sx} cy={sy} r={2.6} fill="#8FD8FF" />
-        <path d={`M ${lx} ${ly + 4} h ${tick * size * (k < 1 ? 1.4 : 2.2)}`} stroke="#8FD8FF" strokeOpacity={0.45} strokeWidth={1} />
-        <text x={lx} y={ly} className="font-mono" fontSize={size} textAnchor={anchor === 'end' ? 'end' : 'start'}>
+        <circle cx={label.sx} cy={label.sy} r={2.6} fill="#8FD8FF" />
+        <rect
+          x={(label.anchor === 'start' ? label.lx - 3 : label.lx - label.width - 1).toFixed(1)}
+          y={(label.ly - size * 0.86).toFixed(1)}
+          width={(label.width + 4).toFixed(1)}
+          height={(size * 1.24).toFixed(1)}
+          rx={3}
+          fill="#0A0B10"
+          fillOpacity={0.74}
+        />
+        <path
+          d={`M ${label.lx.toFixed(1)} ${(label.ly + 4).toFixed(1)} h ${label.rule.toFixed(1)}`}
+          stroke="#8FD8FF"
+          strokeOpacity={0.45}
+          strokeWidth={1}
+        />
+        <text x={label.lx} y={label.ly} className="font-mono" fontSize={size} textAnchor={label.anchor === 'end' ? 'end' : 'start'}>
           <tspan fill="#8FD8FF" fontWeight={600}>
-            {String(part.no).padStart(2, '0')}
+            {label.number}
           </tspan>
-          {/* the names only fit on the wide drawing; phones get the numbers */}
-          {k < 1 ? null : <tspan fill="#9AA0B4"> {part.name}</tspan>}
+          {withName ? <tspan fill="#9AA0B4"> {label.name}</tspan> : null}
         </text>
       </g>
     </g>
@@ -327,10 +353,13 @@ function Leader({ part, k }: { part: DioramaPart; k: number }) {
  * inside it), so the scrubbed timeline in Anatomy.tsx drives the whole scene
  * without a single React re-render.
  */
-export function Diorama({ layout, lit, sparks, current, label }: DioramaProps) {
+export function Diorama({ layout, lit, sparks, current }: DioramaProps) {
   const uid = useId().replace(/[^a-zA-Z0-9-]/g, '');
   const bulbGradient = `jv-bulbglow-${uid}`;
   const k = layout.vertical ? 0.62 : 1;
+  // Pure, deterministic, no DOM reads — identical during prerender and after
+  // hydration, so the callouts never shift (CLS stays 0).
+  const labels = useMemo(() => placeLabels(layout), [layout]);
 
   const draw = (part: DioramaPart): ReactNode => {
     switch (part.id) {
@@ -362,7 +391,7 @@ export function Diorama({ layout, lit, sparks, current, label }: DioramaProps) {
       case 'cable':
         return <Cable sparks={sparks.cable} lit={lit} tapeId={uid} />;
       case 'socket-cover':
-        return <SocketCover sparks={sparks.socket} />;
+        return <SocketCover sparks={sparks.socket} sootId={uid} />;
       case 'socket-frame':
         return <SocketFrame />;
       case 'socket-insert':
@@ -382,8 +411,8 @@ export function Diorama({ layout, lit, sparks, current, label }: DioramaProps) {
     <svg
       className="jv-stage-svg"
       viewBox={layout.viewBox}
-      role="img"
-      aria-label={label}
+      aria-hidden="true"
+      focusable="false"
       preserveAspectRatio="xMidYMid meet"
     >
       <Materials />
@@ -395,13 +424,6 @@ export function Diorama({ layout, lit, sparks, current, label }: DioramaProps) {
         </radialGradient>
       </defs>
 
-      {/* leader lines sit under the parts so a part never hides behind text */}
-      <g data-leaders="" opacity={0}>
-        {layout.parts.map((part) => (
-          <Leader key={part.id} part={part} k={k} />
-        ))}
-      </g>
-
       <CurrentPath ref={current} d={layout.path} strokeWidth={11} coreWidth={3.4} progress={lit ? 1 : 0} />
 
       {layout.parts.map((part) => (
@@ -412,6 +434,14 @@ export function Diorama({ layout, lit, sparks, current, label }: DioramaProps) {
         </g>
       ))}
 
+      {/* Callouts paint above the parts — a leader label must never be hidden
+          by the part it points at, and the dark tag behind each one keeps it
+          legible wherever the placement pass had to park it. */}
+      <g data-leaders="" opacity={0}>
+        {labels.map((label) => (
+          <Leader key={label.id} label={label} size={layout.labelSize} withName={layout.labelNames} />
+        ))}
+      </g>
     </svg>
   );
 }

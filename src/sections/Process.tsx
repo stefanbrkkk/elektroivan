@@ -122,7 +122,7 @@ export function Process() {
           className="min-h-app relative flex flex-col justify-center gap-10 overflow-hidden"
         >
           {header}
-          <div ref={trackRef} data-testid="process-track" className="jv-track relative items-stretch gap-10 px-[6vw] pb-12">
+          <div ref={trackRef} data-testid="process-track" className="jv-track relative items-stretch gap-10 px-[6vw] pb-12 lg:pl-28">
             <svg
               aria-hidden="true"
               viewBox="0 0 1000 40"

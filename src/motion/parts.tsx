@@ -62,14 +62,17 @@ export function Terminal({
   return (
     <g transform={`translate(${cx} ${cy})`}>
       <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={2} fill="#07080C" />
-      <rect x={-w / 2 + 3} y={-h / 2 + 3} width={w - 6} height={h - 6} rx={1.5} fill="url(#m-copper)" />
+      {/* The copper is the clamp *inside* the well, not the whole well — six
+          saturated blocks were the loudest thing in the hero (review-3 minor 7). */}
+      <rect x={-w / 2 + 6} y={-h / 2 + 6} width={w - 12} height={h - 12} rx={1.5} fill="url(#m-copper)" opacity={0.78} />
       <path
-        d={`M ${-w / 2 + 3} ${-h / 2 + 3.6} h ${w - 6}`}
+        d={`M ${-w / 2 + 6} ${-h / 2 + 6.6} h ${w - 12}`}
         stroke="#FFFFFF"
-        strokeOpacity={0.4}
-        strokeWidth={1}
+        strokeOpacity={0.3}
+        strokeWidth={0.9}
         strokeLinecap="round"
       />
+      <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={2} fill="none" stroke="#0A0B10" strokeOpacity={0.55} strokeWidth={1} />
       {screw ? <Screw cx={0} cy={0} r={Math.min(h, w) * 0.3} /> : null}
     </g>
   );

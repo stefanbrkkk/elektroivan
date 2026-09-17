@@ -76,13 +76,13 @@ export const HeroRail = forwardRef<CurrentPathHandle, { className?: string }>(fu
       </g>
 
       {/* dimension line under the group: ticks + rule + mono value */}
-      <g stroke="#8FD8FF" strokeOpacity="0.5" strokeWidth="1" fill="none">
+      <g className="jv-dim" stroke="#8FD8FF" strokeOpacity="0.5" strokeWidth="1" fill="none">
         <path d="M 70 398 V 452" />
         <path d="M 361 398 V 452" />
         <path d="M 70 444 H 150 M 281 444 H 361" />
         <path d="M 66 440 l 8 8 M 357 440 l 8 8" />
       </g>
-      <text x="215" y="448" className="font-mono" fontSize="13" textAnchor="middle" fill="#8FD8FF">
+      <text x="215" y="448" className="jv-dim font-mono" fontSize="13" textAnchor="middle" fill="#8FD8FF">
         2 modula · 36 mm
       </text>
 
