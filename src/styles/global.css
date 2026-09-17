@@ -224,7 +224,8 @@
     width: 6px;
     height: 6px;
     border-radius: 9999px;
-    background-color: var(--color-arc);
+    /* Dot is energy (volt), ring is information (arc) — docs/DESIGN.md §2. */
+    background-color: var(--color-volt);
   }
 
   .cursor-ring {
@@ -287,66 +288,58 @@
       opacity: 1;
     }
 
-    .icon-panel .lever {
-      transition: transform 0.25s var(--ease-out-quart);
-      transform-origin: 8px 7px;
-    }
-    .service-card:hover .icon-panel .lever,
-    .service-card:focus-visible .icon-panel .lever {
-      transform: rotate(-28deg);
-    }
-
-    .icon-lighting .bulb-glow {
-      transition:
-        opacity 0.25s ease,
-        transform 0.25s ease;
-      opacity: 0;
-      transform: scale(0.8);
+    /* Watermark micro-animations (docs/DESIGN.md §3.6). Every part rotates
+       or slides around its own box, so the SVG viewport never shifts. */
+    .service-card .art-lever,
+    .service-card .art-door,
+    .service-card .art-drum,
+    .service-card .art-plug,
+    .service-card .art-needle,
+    .service-card .art-bulb-wire {
+      transform-box: fill-box;
       transform-origin: center;
-    }
-    .service-card:hover .icon-lighting .bulb-glow,
-    .service-card:focus-visible .icon-lighting .bulb-glow {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    .icon-appliances .plug {
-      transition: transform 0.3s var(--ease-out-quart);
-    }
-    .service-card:hover .icon-appliances .plug,
-    .service-card:focus-visible .icon-appliances .plug {
-      transform: translateX(5px);
-    }
-
-    .icon-diagnostics .needle {
-      transition: transform 0.3s var(--ease-out-quart);
-      transform-origin: 12px 15px;
-    }
-    .service-card:hover .icon-diagnostics .needle,
-    .service-card:focus-visible .icon-diagnostics .needle {
-      transform: rotate(35deg);
-    }
-
-    .icon-emergency .spark {
       transition:
-        opacity 0.2s ease,
-        transform 0.2s ease;
-      opacity: 0;
-      transform: translateY(2px) scale(0.6);
-      transform-origin: center;
-    }
-    .service-card:hover .icon-emergency .spark,
-    .service-card:focus-visible .icon-emergency .spark {
-      opacity: 1;
-      transform: translateY(-2px) scale(1);
+        transform 0.35s var(--ease-out-quart),
+        stroke 0.3s ease;
     }
 
-    .icon-wiring .wire-flow {
-      transition: stroke-dashoffset 0.5s var(--ease-out-quart);
+    /* MCB lever snaps up to ON. */
+    .service-card .art-lever {
+      transform-origin: bottom center;
     }
-    .service-card:hover .icon-wiring .wire-flow,
-    .service-card:focus-visible .icon-wiring .wire-flow {
-      stroke-dashoffset: 0;
+    .service-card:hover .art-lever,
+    .service-card:focus-visible .art-lever {
+      transform: translateY(-8px) rotate(-10deg);
+    }
+
+    /* Enclosure door swings open on its right-hand hinge. */
+    .service-card .art-door {
+      transform-origin: right center;
+    }
+    .service-card:hover .art-door,
+    .service-card:focus-visible .art-door {
+      transform: perspective(420px) rotateY(-72deg);
+    }
+
+    /* Cable drum unwinds. */
+    .service-card:hover .art-drum,
+    .service-card:focus-visible .art-drum {
+      transform: rotate(-38deg);
+    }
+
+    /* Plug slides into the socket. */
+    .service-card:hover .art-plug,
+    .service-card:focus-visible .art-plug {
+      transform: translateX(-14px);
+    }
+
+    /* Multimeter needle swings across the scale. */
+    .service-card .art-needle {
+      transform-origin: bottom right;
+    }
+    .service-card:hover .art-needle,
+    .service-card:focus-visible .art-needle {
+      transform: rotate(52deg);
     }
   }
 }
@@ -381,5 +374,495 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ======================================================================== */
+/*   v2 blueprint system (docs/DESIGN.md §2). Page-fixed grid + grain, sheet
+   chrome for `SectionHeader`, technical-drawing decorations (corner marks,
+   dimension lines, hatching), card and button styles, display type scale.
+   All of it is plain CSS on static markup, so it renders identically during
+   prerender and after hydration.
+   =========================================================================== */
+@layer base {
+  /* Blueprint grid pinned to the viewport: 24px minor lines at 5% and 120px
+     major lines at 9%, both tinted with the arc colour. It sits behind every
+     section (z-index 0) and is masked toward the edges so the page still
+     reads as a dark board, not graph paper. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgb(143 216 255 / 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(143 216 255 / 0.09) 1px, transparent 1px),
+      linear-gradient(to right, rgb(143 216 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(143 216 255 / 0.05) 1px, transparent 1px);
+    background-size:
+      120px 120px,
+      120px 120px,
+      24px 24px,
+      24px 24px;
+    background-position: -1px -1px;
+    -webkit-mask-image: radial-gradient(
+      ellipse 85% 65% at 50% 45%,
+      #000 25%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 85% 65% at 50% 45%,
+      #000 25%,
+      transparent 100%
+    );
+  }
+
+  /* Film grain, ≥1024px only (BRIEF §7: nothing extra to paint on phones). */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    display: none;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  @media (min-width: 1024px) {
+    body::after {
+      display: block;
+    }
+  }
+
+  /* Everything the page renders lives above the fixed grid. */
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  /* Element-level copy of the page grid, for panels that need their own
+     blueprint backdrop (stages, cards, dioramas) instead of the fixed one. */
+  .blueprint-grid {
+    background-image:
+      linear-gradient(to right, rgb(143 216 255 / 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(143 216 255 / 0.09) 1px, transparent 1px),
+      linear-gradient(to right, rgb(143 216 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(143 216 255 / 0.05) 1px, transparent 1px);
+    background-size:
+      120px 120px,
+      120px 120px,
+      24px 24px,
+      24px 24px;
+  }
+
+  /* --- layout ----------------------------------------------------------- */
+  .container-x {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 4vw, 3rem);
+  }
+
+  @media (min-width: 1024px) {
+    /* Leave the left margin free for the main cable overlay. */
+    .container-x {
+      padding-left: clamp(3.5rem, 6vw, 6rem);
+    }
+  }
+
+  /* Section rhythm keeps the base 80/128px padding; v2 only adds a stacking
+     context so decorations can sit behind the content. */
+  .section {
+    position: relative;
+  }
+
+  /* --- type scale ------------------------------------------------------- */
+  .display-xl {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 0.92;
+    font-size: clamp(3rem, 11vw, 9rem);
+  }
+
+  .display-lg {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 0.96;
+    font-size: clamp(2.5rem, 6vw, 5.5rem);
+  }
+
+  .display-md {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    font-size: clamp(1.5rem, 2.4vw, 1.75rem);
+  }
+
+  .serif-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* --- sheet chrome (SectionHeader.tsx) --------------------------------- */
+  .sheet-header {
+    position: relative;
+    max-width: 52rem;
+  }
+
+  .sheet-header--center {
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .sheet-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .sheet-header--center .sheet-label {
+    justify-content: center;
+  }
+
+  .sheet-label__num {
+    color: var(--color-arc);
+  }
+
+  .sheet-label__sep,
+  .sheet-label__total {
+    color: color-mix(in srgb, var(--color-muted) 75%, transparent);
+  }
+
+  /* 48px rule between the sheet number and the eyebrow. */
+  .sheet-label__rule {
+    display: inline-block;
+    width: 48px;
+    height: 1px;
+    background: linear-gradient(to right, var(--color-arc), transparent);
+    opacity: 0.6;
+  }
+
+  .sheet-label__eyebrow {
+    color: var(--color-arc);
+  }
+
+  .sheet-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.5rem, 6vw, 5.5rem);
+    line-height: 0.96;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    color: var(--color-text);
+  }
+
+  .sheet-intro {
+    margin: 1.25rem 0 0;
+    max-width: 36rem;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--color-muted);
+  }
+
+  .sheet-header--center .sheet-intro {
+    margin-inline: auto;
+  }
+
+  /* --- technical decorations -------------------------------------------- */
+  /* Four 12px L-shaped marks at the corners of a section frame. Applied to a
+     positioned element; drawn with two gradients per corner pseudo-element. */
+  .corner-marks {
+    position: relative;
+  }
+
+  .corner-marks::before,
+  .corner-marks::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-color: color-mix(in srgb, var(--color-arc) 45%, transparent);
+    border-style: solid;
+  }
+
+  .corner-marks::before {
+    border-width: 1px 0 0 1px;
+    clip-path: polygon(
+      0 0,
+      12px 0,
+      12px 1px,
+      1px 1px,
+      1px 12px,
+      0 12px,
+      0 100%,
+      1px 100%,
+      1px calc(100% - 12px),
+      12px calc(100% - 12px),
+      12px 100%,
+      0 100%
+    );
+  }
+
+  .corner-marks::after {
+    border-width: 1px 1px 0 0;
+    clip-path: polygon(
+      100% 0,
+      calc(100% - 12px) 0,
+      calc(100% - 12px) 1px,
+      calc(100% - 1px) 1px,
+      calc(100% - 1px) 12px,
+      100% 12px,
+      100% 100%,
+      calc(100% - 1px) 100%,
+      calc(100% - 1px) calc(100% - 12px),
+      calc(100% - 12px) calc(100% - 12px),
+      calc(100% - 12px) 100%,
+      100% 100%
+    );
+  }
+
+  /* Bottom L-marks: the two pseudo-elements above only cover the top ones
+     cleanly, so the bottom pair comes from a child span when needed. */
+  .corner-marks > .corner-marks__b {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 0 solid color-mix(in srgb, var(--color-arc) 45%, transparent);
+    border-width: 0 1px 1px 1px;
+    clip-path: polygon(
+      0 100%,
+      12px 100%,
+      12px calc(100% - 1px),
+      1px calc(100% - 1px),
+      1px calc(100% - 12px),
+      0 calc(100% - 12px),
+      0 100%,
+      100% 100%,
+      100% calc(100% - 12px),
+      calc(100% - 1px) calc(100% - 12px),
+      calc(100% - 1px) calc(100% - 1px),
+      calc(100% - 12px) calc(100% - 1px),
+      calc(100% - 12px) 100%
+    );
+  }
+
+  /* Dimension line: `<p class="dim-line"><span>36 mm</span></p>` — an arc rule
+     with end ticks and a mono value sitting on it. */
+  .dim-line {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-arc) 80%, transparent);
+  }
+
+  .dim-line::before,
+  .dim-line::after {
+    content: '';
+    flex: 1 1 0;
+    height: 9px;
+    border-top: 1px solid color-mix(in srgb, var(--color-arc) 40%, transparent);
+    border-inline: 1px solid
+      color-mix(in srgb, var(--color-arc) 40%, transparent);
+    /* the rule sits on the vertical centre of the 9px tick pair */
+    transform: translateY(4px);
+  }
+
+  .dim-line::before {
+    border-right-color: transparent;
+  }
+
+  .dim-line::after {
+    border-left-color: transparent;
+  }
+
+  /* 45° arc hatching at 25% — walls, cut surfaces, "old" panels. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-arc) 25%, transparent) 0 1px,
+      transparent 1px 8px
+    );
+  }
+
+  /* --- card ------------------------------------------------------------- */
+  .card {
+    position: relative;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    background:
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--color-text) 4%, transparent),
+        transparent 96px
+      ),
+      linear-gradient(to bottom, #171a26, var(--color-surface));
+    box-shadow: inset 0 1px 0 0
+      color-mix(in srgb, var(--color-text) 8%, transparent);
+    transition:
+      transform 0.25s var(--ease-out-quart),
+      border-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .card:hover,
+    .card:focus-within {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--color-arc) 40%, transparent);
+      box-shadow:
+        inset 0 1px 0 0 color-mix(in srgb, var(--color-text) 12%, transparent),
+        0 12px 32px -18px rgb(0 0 0 / 0.9);
+    }
+  }
+
+  /* --- buttons ---------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    transition:
+      transform 0.2s var(--ease-out-quart),
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .btn-primary {
+    background-image: linear-gradient(
+      to bottom,
+      var(--color-volt-hi),
+      var(--color-volt-lo)
+    );
+    color: var(--color-bg);
+    box-shadow: 0 0 40px -12px
+      color-mix(in srgb, var(--color-volt) 70%, transparent);
+  }
+
+  .btn-outline {
+    border-color: var(--color-line-strong);
+    color: var(--color-text);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--color-arc);
+      color: var(--color-arc);
+    }
+  }
+}
+
+@layer components {
+  /* --- services watermark (Services.tsx + svg/ServiceArt.tsx) ------------ */
+  .service-art {
+    width: 100%;
+    height: 100%;
+    opacity: 0.35;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Energy accents stay dark until the card is engaged. */
+  .service-art .art-spark,
+  .service-art .art-bulb-glow {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .service-art .art-bulb-wire {
+    stroke: #6e6a5e;
+  }
+
+  /* On narrow screens the card copy runs the full width, so the watermark
+     sits further back to keep body text at full contrast. */
+  @media (max-width: 639px) {
+    .service-art {
+      opacity: 0.22;
+    }
+  }
+
+  .service-card:focus-visible .service-art,
+  .service-card:focus-within .service-art {
+    opacity: 1;
+  }
+
+  .service-card:focus-visible .art-spark,
+  .service-card:focus-visible .art-bulb-glow,
+  .service-card:focus-within .art-spark,
+  .service-card:focus-within .art-bulb-glow {
+    opacity: 1;
+  }
+
+  .service-card:focus-visible .art-bulb-wire,
+  .service-card:focus-within .art-bulb-wire {
+    stroke: var(--color-volt);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .service-card:hover .service-art {
+      opacity: 1;
+    }
+
+    .service-card:hover .art-spark,
+    .service-card:hover .art-bulb-glow {
+      opacity: 1;
+    }
+
+    .service-card:hover .art-bulb-wire {
+      stroke: var(--color-volt);
+    }
   }
 }

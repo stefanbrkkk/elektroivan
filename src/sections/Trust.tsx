@@ -46,35 +46,59 @@ export function Trust() {
 
   return (
     <section ref={sectionRef} id="poverenje" data-testid="section-trust" className="section">
-      <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="font-mono text-xs uppercase tracking-widest text-arc">{site.trust.eyebrow}</h2>
-          <DemoBadge />
+      <div className="container-x">
+        {/* Engineering title block: the stats sit in a bordered grid of cells
+            with mono labels, exactly like the title block of a technical
+            drawing (docs/DESIGN.md §3.4). Labels come from site.trust.stats. */}
+        <div className="corner-marks p-3 md:p-4">
+          <span aria-hidden="true" className="corner-marks__b" />
+          <div className="overflow-hidden rounded-[12px] border border-line">
+            <div className="flex items-center justify-between gap-4 border-b border-line bg-surface/60 px-5 py-3">
+              <h2 className="sheet-label m-0">
+                <span className="sheet-label__word">List</span>
+                <span className="sheet-label__num">02</span>
+                <span className="sheet-label__sep">/</span>
+                <span className="sheet-label__total">10</span>
+                <span aria-hidden="true" className="sheet-label__rule" />
+                <span className="sheet-label__eyebrow">{site.trust.eyebrow}</span>
+              </h2>
+              <DemoBadge />
+            </div>
+
+            <dl className="m-0 grid grid-cols-1 divide-y divide-line sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
+              {site.trust.stats.map((stat, index) => (
+                <div
+                  key={stat.label}
+                  className="flex flex-col justify-between gap-6 border-line p-6 sm:border-b lg:border-b-0 lg:border-r lg:last-of-type:border-r-0"
+                >
+                  <dt className="label-mono m-0 text-[0.7rem] leading-snug">{stat.label}</dt>
+                  <dd
+                    ref={(el) => {
+                      valueRefs.current[index] = el;
+                    }}
+                    data-testid="stat-value"
+                    style={{ minWidth: `${String(stat.value).length + (stat.suffix?.length ?? 0)}ch` }}
+                    className="m-0 font-mono text-[clamp(2.25rem,4.5vw,3.5rem)] font-bold leading-none tabular-nums text-text"
+                  >
+                    {stat.value}
+                    {stat.suffix}
+                  </dd>
+                </div>
+              ))}
+
+              {/* Fourth title-block cell: the demo disclaimer. */}
+              <div className="flex flex-col justify-between gap-6 bg-surface/40 p-6">
+                <dt className="label-mono m-0 text-[0.7rem] leading-snug">{site.ui.demoBadge}</dt>
+                <dd className="m-0 max-w-[24ch] font-mono text-xs leading-relaxed text-muted">
+                  {site.trust.demoNote}
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
 
-        <dl className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-3">
-          {site.trust.stats.map((stat, index) => (
-            <div key={stat.label}>
-              <dt className="text-sm text-muted">{stat.label}</dt>
-              <dd
-                ref={(el) => {
-                  valueRefs.current[index] = el;
-                }}
-                data-testid="stat-value"
-                style={{ minWidth: `${String(stat.value).length + (stat.suffix?.length ?? 0)}ch` }}
-                className="inline-block font-mono text-4xl font-bold tabular-nums text-text md:text-5xl"
-              >
-                {stat.value}
-                {stat.suffix}
-              </dd>
-            </div>
-          ))}
-        </dl>
-
-        <p className="mt-2 text-xs text-muted">{site.trust.demoNote}</p>
-
         <div
-          className="relative mt-12 overflow-hidden border-y border-line py-4"
+          className="relative mt-10 overflow-hidden border-y border-line py-5"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onFocus={() => setHovered(true)}
@@ -91,9 +115,10 @@ export function Trust() {
               <li
                 key={`${item}-${index}`}
                 aria-hidden={index >= site.trust.marquee.length}
-                className="pr-10 font-mono text-sm uppercase tracking-wide text-muted"
+                className="flex items-center gap-10 pr-10 font-mono text-sm uppercase tracking-[0.12em] text-muted"
               >
                 {item}
+                <span aria-hidden="true" className="h-1.5 w-1.5 rotate-45 bg-volt/70" />
               </li>
             ))}
           </ul>
@@ -104,7 +129,7 @@ export function Trust() {
           data-testid="marquee-toggle"
           aria-pressed={manualPause}
           onClick={() => setManualPause((value) => !value)}
-          className="focus-ring mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-3 py-1.5 text-xs text-muted"
+          className="btn btn-outline focus-ring mt-4 text-xs"
         >
           {manualPause ? site.testimonials.play : site.testimonials.pause}
         </button>

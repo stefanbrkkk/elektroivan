@@ -134,3 +134,25 @@ Fixed M5, M6, the motion-engineer halves of M3, M9 and minor 11, plus minors 1, 
 - `services-1440.png` from the QA run showed the main line sweeping across the services cards. Root cause: `MainLine` rebuilt its geometry only on `refreshInit`, i.e. before ScrollTrigger re-measures pin spacers on a resize, so the switch position (and the whole tail) was stale after any viewport change (Playwright's element screenshot resizes the viewport). Fix: rebuild again on `refresh` and re-apply the scrub progress against the new length.
 - Second bug found while probing: after shrinking the viewport the document stayed taller than its content. The layer collapses to 0px before measuring, but the inner `<svg>` kept its old height and its overflow still counted toward `scrollHeight`. Fix: `overflow: hidden` on `.jv-mainline-layer`. Verified with a resize probe (900 → 1015 → 900 → 1100×700): path end == switch centre and document height == footer bottom in every state.
 - Review 2 minors fixed by the supervisor: phone progress bar tracks the whole page with its own trigger (NEW-1), `env()` safe-area fallbacks (NEW-2), Anatomy safety net if the near-viewport build never runs (NEW-4), cursor shows only for mouse pointers (NEW-5), `og:locale` → `sr_RS` (NEW-6). NEW-7 (sub-pixel anatomy composition) accepted as is; NEW-3 handled by re-capturing the screenshots in the final QA run.
+
+## v2 — builder
+
+- **Blueprint grid is page-fixed, not per section.** It lives on `body::before` (24px/5%, 120px/9%, arc-tinted,
+  radially masked) with grain on `body::after` from 1024px. `#root` gets `position: relative; z-index: 1` so no
+  section has to opt in. `.blueprint-grid` exists as an element-level copy for panels that need their own backdrop.
+  `.dot-grid` is kept (still referenced by motion-engineer-owned sections) but is no longer the page texture.
+- **`.corner-marks` needs a helper child for the bottom pair.** A single element only has `::before`/`::after`;
+  drawing four 12px L-marks cleanly needs three clip-paths, so the bottom pair comes from
+  `<span class="corner-marks__b" aria-hidden>`. Sections opt into it explicitly.
+- **Trust title-block labels reuse `site.trust.stats[].label`.** DESIGN §3.4 sketches „Iskustvo / Intervencije /
+  Dolazak“, but `src/config/site.ts` is frozen during parallel work and copy may only come from it, so the cells
+  are labelled with the existing stat labels (uppercased by `.label-mono`) and the fourth cell uses
+  `site.ui.demoBadge` + `site.trust.demoNote`. The layout is the title block asked for; no new copy was invented.
+- **Before/after layer order flipped.** The new board is now the base layer and the old board is clipped from the
+  left, so the visible halves finally match the `Pre` (left) / `Posle` (right) tags. v1 rendered the new board on
+  the left while labelling that side „Pre“.
+- **Watermark opacity is 35% on desktop, 22% below 640px** (DESIGN says 25%). At 25% on a `#13151E` card the
+  shaded drawings read as grey blobs; at 35% they read as parts. On phones the copy runs the card's full width and
+  crosses the drawing, so the watermark steps back instead to keep body text at full contrast.
+- **`.section` padding left at 5rem / 8rem.** DESIGN asks for ≥80/120px; the existing tokens already exceed that,
+  so v2 only adds `position: relative` to the class rather than lowering the desktop rhythm.

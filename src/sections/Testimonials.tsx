@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { site, type Testimonial } from '../config/site';
 import { DemoBadge } from '../components/DemoBadge';
+import { SectionHeader } from '../components/SectionHeader';
 
 function StarIcon() {
   return (
@@ -25,11 +26,15 @@ function Stars({ rating }: { rating: number }) {
 
 function Card({ item }: { item: Testimonial }) {
   return (
-    <figure data-testid="testimonial-card" className="glass w-72 shrink-0 p-5">
+    <figure data-testid="testimonial-card" className="card m-0 flex w-80 shrink-0 flex-col p-6">
       <Stars rating={item.rating} />
-      <blockquote className="mt-3 text-sm text-text">&ldquo;{item.text}&rdquo;</blockquote>
-      <figcaption className="mt-4 text-xs text-muted">
-        <span className="font-semibold text-text">{item.name}</span> — {item.area}
+      <blockquote className="m-0 mt-4 flex-1 text-[0.95rem] leading-relaxed text-text">
+        &ldquo;{item.text}&rdquo;
+      </blockquote>
+      <figcaption className="mt-5 flex items-center gap-3 border-t border-line pt-4 font-mono text-xs text-muted">
+        <span className="text-text">{item.name}</span>
+        <span aria-hidden="true" className="h-px w-6 bg-arc/50" />
+        {item.area}
       </figcaption>
     </figure>
   );
@@ -70,15 +75,14 @@ export function Testimonials() {
 
   return (
     <section id="utisci" data-testid="section-testimonials" className="section">
-      <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <div className="flex items-center justify-between gap-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-arc">{site.testimonials.eyebrow}</p>
+      <div className="container-x">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <SectionHeader sheet={7} eyebrow={site.testimonials.eyebrow} title={site.testimonials.title} />
           <DemoBadge />
         </div>
-        <h2 className="mt-2 font-display text-3xl font-bold text-text md:text-5xl">{site.testimonials.title}</h2>
 
         <div
-          className="mt-10 flex flex-col gap-4 overflow-hidden"
+          className="mt-12 flex flex-col gap-5 overflow-hidden"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onFocus={() => setHovered(true)}
@@ -93,12 +97,12 @@ export function Testimonials() {
           data-testid="testimonials-toggle"
           aria-pressed={manualPause}
           onClick={() => setManualPause((value) => !value)}
-          className="focus-ring mt-6 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-3 py-1.5 text-xs text-muted"
+          className="btn btn-outline focus-ring mt-8 text-xs"
         >
           {manualPause ? site.testimonials.play : site.testimonials.pause}
         </button>
 
-        <p className="mt-2 text-xs text-muted">{site.testimonials.demoNote}</p>
+        <p className="mt-3 font-mono text-xs text-muted">{site.testimonials.demoNote}</p>
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { site } from '../config/site';
+import { SectionHeader } from '../components/SectionHeader';
 
 /**
  * Accessible accordion (docs/BRIEF.md §6.10): real button/panel pairing,
@@ -36,11 +37,10 @@ export function Faq() {
 
   return (
     <section id="pitanja" data-testid="section-faq" className="section">
-      <div className="mx-auto max-w-3xl px-4 md:px-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-arc">{site.faq.eyebrow}</p>
-        <h2 className="mt-2 font-display text-3xl font-bold text-text md:text-5xl">{site.faq.title}</h2>
+      <div className="container-x">
+        <SectionHeader sheet={8} eyebrow={site.faq.eyebrow} title={site.faq.title} />
 
-        <div className="mt-8 flex flex-col divide-y divide-line border-y border-line">
+        <div className="mt-12 flex max-w-3xl flex-col divide-y divide-line border-y border-line">
           {site.faq.items.map((item, index) => {
             const isOpen = openIndex === index;
             const panelId = `faq-panel-${index}`;
@@ -60,10 +60,16 @@ export function Faq() {
                     aria-controls={panelId}
                     onClick={() => setOpenIndex(isOpen ? null : index)}
                     onKeyDown={(event) => handleKeyDown(event, index)}
-                    className="focus-ring flex min-h-11 w-full items-center justify-between gap-4 py-5 text-left font-display text-lg font-semibold text-text"
+                    className="focus-ring group flex min-h-11 w-full items-center gap-4 py-6 text-left font-display text-lg font-semibold text-text md:text-xl"
                   >
-                    {item.question}
-                    <span aria-hidden="true" className="font-mono text-arc">
+                    <span aria-hidden="true" className="font-mono text-xs tracking-[0.18em] text-arc">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="flex-1">{item.question}</span>
+                    <span
+                      aria-hidden="true"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line font-mono text-sm text-arc"
+                    >
                       {isOpen ? '–' : '+'}
                     </span>
                   </button>
@@ -81,7 +87,7 @@ export function Faq() {
                   }}
                 >
                   <div className="overflow-hidden">
-                    <p className="pb-5 text-sm text-muted">{item.answer}</p>
+                    <p className="max-w-[60ch] pb-6 pl-9 text-[0.95rem] leading-relaxed text-muted">{item.answer}</p>
                   </div>
                 </div>
               </div>

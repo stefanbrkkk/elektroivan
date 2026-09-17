@@ -141,7 +141,9 @@ test.describe('services bento at desktop width', () => {
       .poll(async () => Number(await cards.last().evaluate((el) => getComputedStyle(el).opacity)))
       .toBeGreaterThan(0.99);
 
-    await grid.screenshot({ path: `${SHOTS}/services-1440.png` });
+    // Viewport clip (not an element screenshot) so the blueprint grid, the
+    // main cable and the section chrome are part of the visual record.
+    await page.screenshot({ path: `${SHOTS}/services-1440.png` });
 
     // Geometry check: every card's content must fit inside its own
     // bounding box (no descendant taller/wider than its glass panel).
@@ -162,4 +164,31 @@ test.describe('services bento at desktop width', () => {
     });
     expect(overflowing, overflowing.join('\n')).toEqual([]);
   });
+});
+
+test.describe('blueprint section screenshots', () => {
+  // Visual record for the v2 redesign review (docs/DESIGN.md §5). Viewport
+  // clips, so grid, cable and section chrome are all captured.
+  const sections: Array<{ id: string; shot: string }> = [
+    { id: 'poverenje', shot: 'trust-1440.png' },
+    { id: 'pre-posle', shot: 'before-after-1440.png' },
+    { id: 'pitanja', shot: 'faq-1440.png' },
+  ];
+
+  for (const { id, shot } of sections) {
+    test(`captures ${shot}`, async ({ page }) => {
+      test.skip((page.viewportSize()?.width ?? 0) !== 1440, 'd1440 only');
+
+      await page.goto('/');
+      await expect(page.getByTestId('section-intro')).toBeHidden();
+
+      const section = page.locator(`#${id}`);
+      await section.scrollIntoViewIfNeeded();
+      await expect(section).toBeVisible();
+      // Let scroll-triggered reveals settle before the capture.
+      await page.waitForTimeout(1200);
+
+      await page.screenshot({ path: `${SHOTS}/${shot}` });
+    });
+  }
 });

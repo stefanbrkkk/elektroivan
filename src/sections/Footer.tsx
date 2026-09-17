@@ -13,16 +13,25 @@ export function Footer() {
   }
 
   return (
-    <footer id="podnozje" data-testid="section-footer" className="border-t border-line py-10">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 text-center md:flex-row md:justify-between md:px-6 md:text-left">
-        <p className="text-sm text-muted">
-          © {year} {site.name}. {site.footer.rights}
-        </p>
+    <footer id="podnozje" data-testid="section-footer" className="border-t border-line py-12">
+      <div className="container-x flex flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
+        <div>
+          <p className="sheet-label m-0 justify-center md:justify-start">
+            <span className="sheet-label__word">List</span>
+            <span className="sheet-label__num">10</span>
+            <span className="sheet-label__sep">/</span>
+            <span className="sheet-label__total">10</span>
+            <span aria-hidden="true" className="sheet-label__rule" />
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            © {year} {site.name}. {site.footer.rights}
+          </p>
+        </div>
         <button
           type="button"
           data-testid="back-to-top"
           onClick={handleBackToTop}
-          className="focus-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-line-strong px-4 py-2 text-sm text-text"
+          className="btn btn-outline focus-ring"
         >
           {site.footer.backToTop}
         </button>

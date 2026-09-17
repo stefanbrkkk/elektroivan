@@ -1,5 +1,7 @@
-import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { site, type Service } from '../config/site';
+import { SectionHeader } from '../components/SectionHeader';
+import { ServiceArt } from '../components/svg/ServiceArt';
 import { useFinePointer } from '../hooks/useFinePointer';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { gsap, useGSAP } from '../motion/motion';
@@ -12,88 +14,30 @@ const SIZE_CLASSES: Record<Service['size'], string> = {
   sm: 'sm:col-span-1 lg:col-span-1',
 };
 
-const ICON_CLASSES: Record<Service['id'], string> = {
-  emergency: 'icon-emergency',
-  panel: 'icon-panel',
-  wiring: 'icon-wiring',
-  lighting: 'icon-lighting',
-  appliances: 'icon-appliances',
-  diagnostics: 'icon-diagnostics',
+// Watermark drawing size per card size (docs/DESIGN.md §3.6 asks for ~160px;
+// the hero card of the bento carries a larger one, the 1x1 cards a smaller).
+const ART_SIZE: Record<Service['size'], string> = {
+  lg: 'h-40 w-40 sm:h-64 sm:w-64 lg:h-80 lg:w-80',
+  md: 'h-32 w-32 sm:h-44 sm:w-44',
+  sm: 'h-28 w-28 sm:h-32 sm:w-32',
 };
 
-// Six purpose-made icons, each with a fine-pointer-only hover/focus
-// micro-animation defined in src/styles/global.css: breaker lever flips
-// (panel), bulb lights (lighting), plug enters socket (appliances), meter
-// needle moves (diagnostics), bolt + sparks (emergency), current flows
-// through the wire (wiring).
-const ICONS: Record<Service['id'], ReactNode> = {
-  emergency: (
-    <>
-      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="var(--color-volt)" />
-      <circle className="spark" cx="20" cy="6" r="1.4" fill="var(--color-arc)" />
-      <circle className="spark" cx="6" cy="18" r="1" fill="var(--color-arc)" />
-    </>
-  ),
-  panel: (
-    <>
-      <rect x="4" y="3" width="16" height="18" rx="2" fill="none" stroke="var(--color-volt)" strokeWidth="1.5" />
-      <path d="M8 8h3M8 16h3" stroke="var(--color-volt)" strokeWidth="1.5" strokeLinecap="round" />
-      <g className="lever">
-        <rect x="8" y="10.5" width="3" height="5" rx="1" fill="var(--color-arc)" />
-      </g>
-      <path d="M13 8h3M13 16h3" stroke="var(--color-volt)" strokeWidth="1.5" strokeLinecap="round" />
-    </>
-  ),
-  wiring: (
-    <>
-      {/* Always-visible base wire; the brighter overlay only reveals a
-          "current flowing" sweep on hover (fine pointer), so touch/reduced
-          motion see the same fully-drawn icon. */}
-      <path
-        d="M4 6c4 0 2 6 6 6s2-6 6-6 2 6 6 6"
-        fill="none"
-        stroke="var(--color-volt)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        className="wire-flow"
-        d="M4 6c4 0 2 6 6 6s2-6 6-6 2 6 6 6"
-        fill="none"
-        stroke="var(--color-arc)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray={1}
-        strokeDashoffset={1}
-      />
-    </>
-  ),
-  lighting: (
-    <>
-      <circle cx="12" cy="10" r="6" fill="none" stroke="var(--color-volt)" strokeWidth="1.5" />
-      <circle className="bulb-glow" cx="12" cy="10" r="4" fill="var(--color-volt-hi)" />
-      <path d="M9 20h6M10 22h4" stroke="var(--color-volt)" strokeWidth="1.5" strokeLinecap="round" />
-    </>
-  ),
-  appliances: (
-    <>
-      <rect x="13" y="9" width="8" height="6" rx="1.5" fill="none" stroke="var(--color-volt)" strokeWidth="1.5" />
-      <g className="plug">
-        <path d="M3 12h8" stroke="var(--color-volt)" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M6 8v3M9 8v3" stroke="var(--color-arc)" strokeWidth="1.5" strokeLinecap="round" />
-      </g>
-    </>
-  ),
-  diagnostics: (
-    <>
-      <circle cx="12" cy="14" r="7" fill="none" stroke="var(--color-volt)" strokeWidth="1.5" />
-      <path d="M8 14a4 4 0 0 1 8 0" stroke="var(--color-line)" strokeWidth="1" fill="none" />
-      <line className="needle" x1="12" y1="15" x2="12" y2="10" stroke="var(--color-arc)" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="15" r="1.2" fill="var(--color-arc)" />
-    </>
-  ),
+// Text column width + bottom clearance, so copy never collides with the
+// watermark drawing at any viewport (asserted in e2e/interactions.spec.ts).
+const TEXT_BOX: Record<Service['size'], string> = {
+  lg: 'max-w-[38ch] pb-16',
+  md: 'max-w-[30ch] pb-4',
+  sm: 'max-w-full pb-24',
 };
+
+const TITLE_SIZE: Record<Service['size'], string> = {
+  lg: 'text-[1.75rem]',
+  md: 'text-[1.5rem]',
+  sm: 'text-[1.5rem]',
+};
+
+// Mono index shown as a drawing callout in each card's top-left corner.
+const pad = (n: number) => String(n).padStart(2, '0');
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -101,9 +45,10 @@ function clamp(value: number, min: number, max: number): number {
 
 interface ServiceCardProps {
   service: Service;
+  index: number;
 }
 
-function ServiceCard({ service }: ServiceCardProps) {
+function ServiceCard({ service, index }: ServiceCardProps) {
   const cardRef = useRef<HTMLElement>(null);
   const finePointer = useFinePointer();
   const reducedMotion = usePrefersReducedMotion();
@@ -140,26 +85,34 @@ function ServiceCard({ service }: ServiceCardProps) {
       data-testid="service-card"
       onPointerMove={interactive ? handlePointerMove : undefined}
       onPointerLeave={interactive ? handlePointerLeave : undefined}
-      className={`service-card focus-ring glass relative flex flex-col justify-between p-6 ${SIZE_CLASSES[service.size]}`}
+      className={`service-card card focus-ring relative flex min-h-[13rem] flex-col overflow-hidden p-6 md:p-7 ${SIZE_CLASSES[service.size]}`}
     >
       <span className="spotlight" aria-hidden="true" />
-      {/* The pointer-tilt transform is scoped to this small, naturally-sized
-          wrapper around just the icon — never to a flex/percentage-height
-          container. Applying rotateX/rotateY to a `flex h-full` box inside a
-          narrow CSS Grid cell triggers a genuine Chromium sizing bug for
-          descendant SVGs (verified independent of GSAP); a tightly-sized
-          wrapper sidesteps it entirely. */}
+
+      {/* Dimensional watermark: 25% opacity until the card is hovered or
+          focused, then full colour with its own micro-animation. The tilt
+          transform is scoped to this absolutely-positioned wrapper, never to
+          a percentage-height flex container (a Chromium sizing bug for
+          descendant SVGs, see the v1 note in docs/DECISIONS.md). */}
       <div
-        className="tilt-wrapper relative z-[1] inline-block"
-        style={interactive ? { transform: 'perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))' } : undefined}
+        aria-hidden="true"
+        className={`service-art-wrap tilt-wrapper pointer-events-none absolute bottom-0 right-0 ${ART_SIZE[service.size]}`}
+        style={
+          interactive
+            ? { transform: 'perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))' }
+            : undefined
+        }
       >
-        <svg className={ICON_CLASSES[service.id]} width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
-          {ICONS[service.id]}
-        </svg>
+        <ServiceArt id={service.id} className="h-full w-full" />
       </div>
-      <div className="relative z-[1] mt-4">
-        <h3 className="font-display text-lg font-semibold text-text">{service.title}</h3>
-        <p className="mt-2 text-sm text-muted">{service.description}</p>
+
+      <p aria-hidden="true" className="relative z-[1] font-mono text-xs tracking-[0.18em] text-arc">
+        {pad(index + 1)}
+      </p>
+
+      <div className={`relative z-[1] mt-6 ${TEXT_BOX[service.size]}`}>
+        <h3 className={`display-md text-text ${TITLE_SIZE[service.size]}`}>{service.title}</h3>
+        <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">{service.description}</p>
       </div>
     </article>
   );
@@ -198,17 +151,15 @@ export function Services() {
 
   return (
     <section id="usluge" data-testid="section-services" className="section">
-      <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-arc">{site.services.eyebrow}</p>
-        <h2 className="mt-2 font-display text-3xl font-bold text-text md:text-5xl">{site.services.title}</h2>
-        <p className="mt-4 max-w-2xl text-muted">{site.services.intro}</p>
+      <div className="container-x">
+        <SectionHeader sheet={4} eyebrow={site.services.eyebrow} title={site.services.title} intro={site.services.intro} />
 
         <div
           ref={gridRef}
-          className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-flow-dense lg:auto-rows-[minmax(11rem,auto)] lg:grid-cols-4"
+          className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:auto-rows-[minmax(13rem,auto)] lg:grid-flow-dense lg:grid-cols-4"
         >
-          {site.services.items.map((service) => (
-            <ServiceCard key={service.id} service={service} />
+          {site.services.items.map((service, index) => (
+            <ServiceCard key={service.id} service={service} index={index} />
           ))}
         </div>
       </div>

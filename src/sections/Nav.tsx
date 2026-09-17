@@ -16,7 +16,7 @@ function sectionId(href: string): string {
 
 function BoltMark() {
   return (
-    <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true">
       <path d="M17.6 4L9 18h5.6l-1.4 10L23 14h-5.6l0.2-10z" fill="var(--color-volt)" />
     </svg>
   );
@@ -207,10 +207,12 @@ export function Nav() {
       data-testid="section-nav"
       className={`safe-top fixed inset-x-0 top-0 z-50 transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${visuallyHidden ? '-translate-y-full' : 'translate-y-0'}`}
     >
-      <div className="glass mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
+      {/* Blueprint chrome: a full-bleed hairline under a glass bar, so the
+          header reads as the top edge of the drawing sheet. */}
+      <div className="glass flex h-16 items-center justify-between rounded-none border-x-0 border-t-0 border-b border-line px-4 md:px-8">
         <AnchorLink
           href="#pocetak"
-          className="focus-ring flex items-center gap-1.5 rounded-md font-display text-lg font-bold text-text"
+          className="focus-ring flex items-center gap-2 rounded-md font-display text-xl font-extrabold tracking-tight text-text"
         >
           <BoltMark />
           {site.wordmark}
@@ -239,7 +241,7 @@ export function Nav() {
                 data-testid={`nav-link-${id}`}
                 aria-current={isActive ? 'location' : undefined}
                 onClick={closeMenu}
-                className={`focus-ring relative rounded-md px-3 py-3 text-base transition-colors after:absolute after:inset-x-3 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-volt after:transition-opacity lg:px-1 lg:py-1 lg:text-sm lg:after:inset-x-1 ${isActive ? 'text-text after:opacity-100' : 'text-muted after:opacity-0 hover:text-text'}`}
+                className={`focus-ring relative rounded-md px-3 py-3 text-base transition-colors after:absolute after:inset-x-3 after:-bottom-0.5 after:h-0.5 after:bg-volt after:transition-opacity lg:px-1 lg:py-1 lg:text-sm lg:after:inset-x-1 ${isActive ? 'text-text after:opacity-100' : 'text-muted after:opacity-0 hover:text-text'}`}
               >
                 {link.label}
               </AnchorLink>
@@ -250,7 +252,7 @@ export function Nav() {
             data-testid="nav-cta"
             data-magnetic
             onClick={closeMenu}
-            className="focus-ring mt-2 rounded-md bg-volt px-4 py-3 text-center text-base font-semibold text-bg lg:mt-0 lg:py-2 lg:text-sm"
+            className="btn btn-primary focus-ring mt-2 lg:mt-0 lg:min-h-9 lg:py-2 lg:text-sm"
           >
             {site.nav.cta}
           </AnchorLink>
