@@ -58,7 +58,7 @@ export interface SiteConfig {
     description: string;
     ogTitle: string;
     ogDescription: string;
-    locale: 'sr_Latn';
+    locale: 'sr_RS';
   };
   nav: {
     links: NavLink[];
@@ -163,7 +163,7 @@ export const site = {
     ogTitle: 'Električar Jovan — struja se vraća, kvar po kvar',
     ogDescription:
       'Hitne intervencije, razvodne table, instalacije i rasveta. Pouzdan električar u Beogradu, dostupan i za hitne pozive.',
-    locale: 'sr_Latn',
+    locale: 'sr_RS',
   },
 
   nav: {

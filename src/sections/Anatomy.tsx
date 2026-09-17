@@ -105,6 +105,14 @@ export function Anatomy() {
       gsap.set(cards, { opacity: 0, y: 10 });
       gsap.set(cards[0], { opacity: 1, y: 0 });
       if (finalText) gsap.set(finalText, { opacity: 0, y: 10 });
+      // Safety net: if the near-viewport build never runs (no IntersectionObserver,
+      // a stalled tab), nothing may stay hidden — show every card statically.
+      let sceneBuilt = false;
+      const safetyNet = gsap.delayedCall(4, () => {
+        if (sceneBuilt) return;
+        gsap.set(cards, { opacity: 1, y: 0 });
+        if (finalText) gsap.set(finalText, { opacity: 1, y: 0 });
+      });
 
       // The spine: one empty tween fixes the master's duration at `segments`
       // whether or not the scene has been built yet, so the pin distance and
@@ -199,6 +207,8 @@ export function Anatomy() {
       // the ~440ms boot task (BRIEF §7: build heavy scenes near the viewport;
       // the pin spacer above already reserves the height, so CLS stays 0).
       const buildScene = () => {
+        sceneBuilt = true;
+        safetyNet.kill();
         // Where each component sits along the circuit path, measured from the
         // rendered path so the two layouts need no hand-kept numbers.
         const corePath = root.querySelector<SVGPathElement>(
@@ -399,6 +409,7 @@ export function Anatomy() {
       const disposeNear = whenNear(pin, buildScene);
 
       return () => {
+        safetyNet.kill();
         disposeNear();
         stopLoops();
         master.eventCallback('onUpdate', null);

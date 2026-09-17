@@ -237,7 +237,6 @@ export function MainLine() {
 
       const onUpdate = (self: ScrollTrigger) => {
         progress = self.progress;
-        setFill?.(progress);
 
         if (!pulse || !dot || !energized || length === 0) return;
         const tip = energized.getPointAtLength(length * progress);
@@ -300,11 +299,22 @@ export function MainLine() {
         if (tween && st) {
           tween.invalidate().progress(st.progress);
           progress = st.progress;
-          setFill?.(progress);
         } else if (st) {
           onUpdate(st);
         }
       };
+
+      // The phone progress bar tracks the whole page (top → bottom), not the
+      // cable's arrival at the switch, so it only fills up at the very end.
+      const barTrigger = setFill
+        ? ScrollTrigger.create({
+            trigger: document.body,
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: true,
+            onUpdate: (self) => setFill(self.progress),
+          })
+        : null;
 
       ScrollTrigger.addEventListener('refreshInit', build);
       ScrollTrigger.addEventListener('refresh', rebuildAfterRefresh);
@@ -316,6 +326,7 @@ export function MainLine() {
         tween?.scrollTrigger?.kill();
         tween?.kill();
         trigger?.kill();
+        barTrigger?.kill();
         disposeWatchers();
       };
     },

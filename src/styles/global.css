@@ -159,19 +159,19 @@
      consumer keep its own base padding on that edge; the inset is additive
      on top of it rather than replacing it outright. */
   .safe-top {
-    padding-top: calc(var(--safe-pt, 0px) + env(safe-area-inset-top)) !important;
+    padding-top: calc(var(--safe-pt, 0px) + env(safe-area-inset-top, 0px)) !important;
   }
 
   .safe-bottom {
-    padding-bottom: calc(var(--safe-pb, 0px) + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(var(--safe-pb, 0px) + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .safe-left {
-    padding-left: calc(var(--safe-pl, 0px) + env(safe-area-inset-left)) !important;
+    padding-left: calc(var(--safe-pl, 0px) + env(safe-area-inset-left, 0px)) !important;
   }
 
   .safe-right {
-    padding-right: calc(var(--safe-pr, 0px) + env(safe-area-inset-right)) !important;
+    padding-right: calc(var(--safe-pr, 0px) + env(safe-area-inset-right, 0px)) !important;
   }
 
   .min-h-app {

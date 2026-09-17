@@ -108,12 +108,15 @@ export function Cursor() {
     // elements — belt-and-braces alongside the `show()` call in
     // `handlePointerMove` above, which is what covers the common case of a
     // page loading with the pointer already inside the viewport.
-    window.addEventListener('pointerover', show);
+    const showForMouse = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse') show();
+    };
+    window.addEventListener('pointerover', showForMouse);
     window.addEventListener('mouseout', handleWindowMouseOut);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerover', show);
+      window.removeEventListener('pointerover', showForMouse);
       window.removeEventListener('mouseout', handleWindowMouseOut);
       document.documentElement.classList.remove('cursor-none');
       if (magnetic) gsap.set(magnetic, { x: 0, y: 0 });
