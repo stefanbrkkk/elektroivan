@@ -1,40 +1,294 @@
-import { CurrentPath } from './CurrentPath';
+import { useRef } from 'react';
+import { ScrollTrigger, gsap, installMotionWatchers, useGSAP } from './motion';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
-// Placeholder vertical run; motion-engineer replaces this with the real
-// routed path (bends toward each section, ending at [data-mainline-end]).
-const CABLE_PATH = 'M40 0 V4000';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** Bend offsets as a fraction of the available gutter — irregular on purpose. */
+const BEND_PATTERN = [1, -0.4, 0.75, -0.25, 0.6, -0.5, 0.9, -0.3, 0.7];
+/** How far the travelling pulse runs before it reaches the energized tip (px). */
+const PULSE_TRAVEL = 260;
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+function roundedRoute(points: Point[]): string {
+  if (points.length === 0) return '';
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const previous = points[i - 1];
+    const point = points[i];
+    if (Math.abs(point.x - previous.x) < 0.5) {
+      d += ` L ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+      continue;
+    }
+    const radius = Math.min(26, Math.max(8, (point.y - previous.y) * 0.18));
+    d += ` L ${previous.x.toFixed(1)} ${(point.y - radius).toFixed(1)}`;
+    d += ` C ${previous.x.toFixed(1)} ${point.y.toFixed(1)} ${point.x.toFixed(1)} ${point.y.toFixed(1)} ${point.x.toFixed(1)} ${(point.y + radius).toFixed(1)}`;
+  }
+
+  return d;
+}
 
 /**
- * Fixed overlay for the site-wide "main line": on ≥1024px a left-edge cable
- * (CurrentPath) that tracks scroll progress; below that breakpoint a top
- * progress bar instead. Both markups stay mounted; visibility is CSS-driven
- * so there is no layout shift when crossing the breakpoint.
+ * The site-wide "main line" (docs/BRIEF.md §5.1).
+ *
+ * ≥1024px: a full-document-height SVG pinned to the left gutter, routed from
+ * real DOM measurements — it starts under the hero, bends toward every
+ * `<main>` section (clamp rings at each bend) and ends exactly on the contact
+ * switch (`[data-mainline-end]`). The energized part scrubs its
+ * `stroke-dashoffset` with total scroll progress and a short pulse rides the
+ * energized tip, paused whenever that tip is off screen.
+ *
+ * <1024px: the same progress drives a 2px top bar instead (transform only).
+ *
+ * Geometry is rebuilt on every `refreshInit`, so pin spacers, fonts and
+ * resizes are all accounted for.
  */
 export function MainLine() {
+  const reduced = usePrefersReducedMotion();
+  const desktop = useMediaQuery('(min-width: 1024px)');
+  const layerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const sheathRef = useRef<SVGPathElement>(null);
+  const energizedRef = useRef<SVGPathElement>(null);
+  const ringsRef = useRef<SVGGElement>(null);
+  const dotRef = useRef<SVGCircleElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      const disposeWatchers = installMotionWatchers();
+      const fill = fillRef.current;
+      const setFill = fill ? gsap.quickSetter(fill, 'scaleX') : null;
+      const energized = energizedRef.current;
+      const dot = dotRef.current;
+
+      let length = 0;
+
+      const build = () => {
+        const layer = layerRef.current;
+        const svg = svgRef.current;
+        const sheath = sheathRef.current;
+        const rings = ringsRef.current;
+        if (!layer || !svg || !sheath || !energized || !rings || !desktop) return;
+
+        // Collapse first: a stale overlay height would otherwise keep the
+        // document taller than its content after a section shrinks.
+        layer.style.height = '0px';
+
+        const viewportWidth = document.documentElement.clientWidth;
+        const documentHeight = Math.max(
+          document.documentElement.scrollHeight,
+          window.innerHeight
+        );
+        const offsetY = window.scrollY;
+        const offsetX = window.scrollX;
+
+        const main = document.getElementById('sadrzaj');
+        const hero = document.querySelector<HTMLElement>('[data-testid="section-hero"]');
+        const endElement = document.querySelector<HTMLElement>('[data-mainline-end]');
+        if (!main || !hero || !endElement) return;
+
+        const contentWidth = Math.min(1152, viewportWidth - 48);
+        const gutter = Math.max(0, (viewportWidth - contentWidth) / 2);
+        const baseX = gsap.utils.clamp(14, 54, gutter * 0.42);
+        const amplitude = gsap.utils.clamp(6, 40, gutter * 0.26);
+
+        // One batched read pass — no interleaved writes, no layout thrash.
+        const heroRect = hero.getBoundingClientRect();
+        const endRect = endElement.getBoundingClientRect();
+        const sections = Array.from(main.children).filter(
+          (node): node is HTMLElement => node instanceof HTMLElement && node.tagName === 'SECTION'
+        );
+        const sectionRects = sections.map((section) => ({
+          id: section.id,
+          rect: section.getBoundingClientRect(),
+        }));
+
+        const endX = endRect.left + offsetX + 4;
+        const endY = endRect.top + endRect.height / 2 + offsetY;
+
+        const points: Point[] = [{ x: baseX, y: heroRect.bottom + offsetY - 48 }];
+        let bendIndex = 0;
+        for (const { id, rect } of sectionRects) {
+          if (id === 'pocetak' || id === 'kontakt') continue;
+          const y = rect.top + offsetY + rect.height * 0.5;
+          if (y <= points[points.length - 1].y + 80) continue;
+          const offset = BEND_PATTERN[bendIndex % BEND_PATTERN.length] * amplitude;
+          bendIndex += 1;
+          points.push({ x: Math.max(6, baseX + offset), y });
+        }
+
+        const last = points[points.length - 1];
+        const approachY = Math.max(last.y + 120, endY - 200);
+        points.push({ x: last.x, y: approachY });
+
+        let d = roundedRoute(points);
+        // Final sweep out of the gutter and into the wall switch.
+        d += ` C ${last.x.toFixed(1)} ${(endY - 40).toFixed(1)} ${(endX - 90).toFixed(1)} ${endY.toFixed(1)} ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+
+        layer.style.width = `${viewportWidth}px`;
+        layer.style.height = `${documentHeight}px`;
+        svg.setAttribute('width', String(viewportWidth));
+        svg.setAttribute('height', String(documentHeight));
+        svg.setAttribute('viewBox', `0 0 ${viewportWidth} ${documentHeight}`);
+        sheath.setAttribute('d', d);
+        energized.setAttribute('d', d);
+
+        rings.replaceChildren();
+        for (let i = 1; i < points.length - 1; i += 1) {
+          const ring = document.createElementNS(SVG_NS, 'rect');
+          ring.setAttribute('x', String(points[i].x - 9));
+          ring.setAttribute('y', String(points[i].y - 5));
+          ring.setAttribute('width', '18');
+          ring.setAttribute('height', '10');
+          ring.setAttribute('rx', '3');
+          ring.setAttribute('fill', 'var(--color-surface)');
+          ring.setAttribute('stroke', 'var(--color-line)');
+          ring.setAttribute('stroke-width', '1.5');
+          rings.appendChild(ring);
+        }
+
+        length = energized.getTotalLength();
+        energized.style.strokeDasharray = `${length}`;
+        energized.style.strokeDashoffset = `${length}`;
+      };
+
+      build();
+
+      let progress = 0;
+      let pulseVisible = false;
+      let pulse: gsap.core.Tween | null = null;
+
+      if (dot && !reduced && desktop) {
+        const state = { t: 0 };
+        const setX = gsap.quickSetter(dot, 'x', 'px');
+        const setY = gsap.quickSetter(dot, 'y', 'px');
+        pulse = gsap.to(state, {
+          t: 1,
+          duration: 1.5,
+          repeat: -1,
+          ease: 'none',
+          paused: true,
+          onUpdate: () => {
+            if (!energized || length === 0) return;
+            const tip = length * progress;
+            const at = Math.max(0, tip - PULSE_TRAVEL * (1 - state.t));
+            const point = energized.getPointAtLength(at);
+            setX(point.x);
+            setY(point.y);
+          },
+        });
+      }
+
+      const onUpdate = (self: ScrollTrigger) => {
+        progress = self.progress;
+        setFill?.(progress);
+
+        if (reduced && energized && length > 0) {
+          energized.style.strokeDashoffset = `${length * (1 - progress)}`;
+        }
+
+        if (!pulse || !dot || !energized || length === 0) return;
+        const tip = energized.getPointAtLength(length * progress);
+        const visible =
+          progress > 0.01 &&
+          tip.y > window.scrollY - 60 &&
+          tip.y < window.scrollY + window.innerHeight + 60;
+        if (visible === pulseVisible) return;
+        pulseVisible = visible;
+        if (visible) {
+          gsap.set(dot, { opacity: 1 });
+          pulse.play();
+        } else {
+          pulse.pause();
+          gsap.set(dot, { opacity: 0 });
+        }
+      };
+
+      const scrollTriggerVars: ScrollTrigger.Vars = {
+        trigger: document.body,
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: reduced ? true : 0.4,
+        invalidateOnRefresh: true,
+        // ScrollTrigger only sorts triggers when at least one declares a
+        // refreshPriority — without it they refresh in creation order and
+        // everything below a pin measures a document that has not been
+        // re-spaced yet. Declaring it here both enables the position sort for
+        // the whole page and makes this document-height trigger refresh last.
+        refreshPriority: -999,
+        onUpdate,
+      };
+
+      let tween: gsap.core.Tween | null = null;
+      let trigger: ScrollTrigger | null = null;
+
+      if (energized && !reduced) {
+        tween = gsap.fromTo(
+          energized,
+          { strokeDashoffset: () => length },
+          { strokeDashoffset: 0, ease: 'none', scrollTrigger: scrollTriggerVars }
+        );
+      } else {
+        trigger = ScrollTrigger.create(scrollTriggerVars);
+      }
+
+      ScrollTrigger.addEventListener('refreshInit', build);
+
+      return () => {
+        ScrollTrigger.removeEventListener('refreshInit', build);
+        pulse?.kill();
+        tween?.scrollTrigger?.kill();
+        tween?.kill();
+        trigger?.kill();
+        disposeWatchers();
+      };
+    },
+    { dependencies: [reduced, desktop], revertOnUpdate: true }
+  );
+
   return (
     <>
-      <svg
-        data-testid="mainline"
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-y-0 left-0 z-40 hidden h-full w-16 lg:block"
-        viewBox="0 0 80 4000"
-        preserveAspectRatio="none"
-      >
-        <CurrentPath d={CABLE_PATH} />
-        <path
-          data-testid="mainline-energized"
-          d={CABLE_PATH}
-          stroke="var(--color-volt)"
-          strokeWidth={2}
-          fill="none"
-        />
-      </svg>
-      <div
-        data-testid="progress-bar"
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-40 h-1 bg-line lg:hidden"
-      >
-        <div className="h-full w-0 bg-volt" />
+      <div ref={layerRef} className="jv-mainline-layer" aria-hidden="true">
+        <svg ref={svgRef} data-testid="mainline" className="jv-mainline" aria-hidden="true">
+          <path
+            ref={sheathRef}
+            d="M 0 0"
+            fill="none"
+            stroke="var(--color-line)"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M 0 0"
+            fill="none"
+            stroke="var(--color-volt-lo)"
+            strokeWidth="1"
+            strokeDasharray="2 16"
+            opacity="0.3"
+          />
+          <g ref={ringsRef} />
+          <path
+            ref={energizedRef}
+            data-testid="mainline-energized"
+            d="M 0 0"
+            fill="none"
+            stroke="var(--color-volt)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle ref={dotRef} r="4" cx="0" cy="0" fill="var(--color-volt-hi)" opacity="0" />
+        </svg>
+      </div>
+      <div data-testid="progress-bar" className="jv-progress" aria-hidden="true">
+        <div ref={fillRef} className="jv-progress-fill" />
       </div>
     </>
   );

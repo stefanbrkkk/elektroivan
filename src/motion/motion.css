@@ -1,0 +1,201 @@
+/* Shared CSS for the motion toolkit (src/motion/*) and the animated
+ * sections. Deliberately NOT inside a Tailwind cascade layer: these are
+ * private `jv-` prefixed classes that never compete with a Tailwind utility
+ * on the same element (see docs/DECISIONS.md, phase 1, for why duplicating a
+ * selector Tailwind owns is unreliable).
+ *
+ * Every rule here animates or toggles transform / opacity / visibility /
+ * clip-path / stroke-dashoffset only. */
+
+/* ---------------------------------------------------------------- sparks */
+.jv-sparks {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.jv-sparks[data-active='false'] {
+  visibility: hidden;
+}
+
+/* --------------------------------------------------- desktop-only effects */
+/* Soft SVG glow (feGaussianBlur) is expensive on phones — BRIEF §7. */
+@media (max-width: 1023px) {
+  .jv-glow-lg {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------ JS take-over */
+/* `.jv-veil` / `.jv-unlit` are the no-JS safety nets: an element starts
+ * hidden (or dim) so GSAP can reveal it, but a pure-CSS animation reveals it
+ * anyway if the bundle never runs. `unveil()` (src/motion/motion.ts) strips
+ * the class on mount and GSAP takes over. Reduced motion neutralises the
+ * animation globally (see src/styles/global.css), leaving the final state. */
+.jv-veil {
+  opacity: 0;
+  animation: jv-veil-in 400ms 1400ms ease-out forwards;
+}
+
+.jv-unlit {
+  opacity: 0.16;
+  animation: jv-veil-in 400ms 1400ms ease-out forwards;
+}
+
+@keyframes jv-veil-in {
+  to {
+    opacity: 1;
+    clip-path: none;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ intro */
+.jv-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg);
+  /* Never swallow a click: the interrupt listeners live on window. */
+  pointer-events: none;
+}
+
+.jv-intro-auto {
+  animation: jv-intro-out 300ms 1200ms ease-out forwards;
+}
+
+@keyframes jv-intro-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* -------------------------------------------------------------- main line */
+.jv-mainline-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.jv-mainline {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .jv-mainline {
+    display: block;
+  }
+}
+
+.jv-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  height: 2px;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-line) 70%, transparent);
+}
+
+@media (min-width: 1024px) {
+  .jv-progress {
+    display: none;
+  }
+}
+
+.jv-progress-fill {
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background-image: linear-gradient(90deg, var(--color-line), var(--color-volt));
+}
+
+/* ------------------------------------------------------------------- hero */
+.jv-field {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ---------------------------------------------------------------- anatomy */
+.jv-stage-svg {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 1023px) {
+  .jv-stage-svg {
+    max-height: 34svh;
+  }
+}
+
+/* Stacked step cards: only the active one is readable, all of them share the
+ * same box so the pinned layout never reflows between steps. */
+.jv-card-stack {
+  position: relative;
+}
+
+.jv-card-stack > .jv-card {
+  position: absolute;
+  inset: 0;
+}
+
+.jv-card-stack > .jv-card[data-active='true'] {
+  position: relative;
+}
+
+/* ---------------------------------------------------------------- process */
+.jv-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+/* ---------------------------------------------------------------- contact */
+.jv-cone {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  clip-path: polygon(38% 0%, 62% 0%, 100% 100%, 0% 100%);
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-volt) 34%, transparent),
+    transparent 78%
+  );
+}
+
+.jv-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-120%) skewX(-12deg);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-text) 14%, transparent),
+    transparent
+  );
+}
+
+/* Neon-tube feel for the hero words: a static halo, so brightness only ever
+ * changes through the (capped) flicker on the element itself. */
+.jv-neon {
+  text-shadow: 0 0 28px color-mix(in srgb, var(--color-volt) 45%, transparent);
+}
+
+/* Short phones: keep drawing + card + counter inside one screen (BRIEF §7). */
+@media (max-width: 1023px) and (max-height: 720px) {
+  .jv-stage-svg {
+    max-height: 30svh;
+  }
+}
