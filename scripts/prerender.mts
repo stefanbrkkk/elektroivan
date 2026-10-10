@@ -82,7 +82,7 @@ async function main(): Promise<void> {
     `<meta name="twitter:title" content="${escapeAttr(site.seo.ogTitle)}">`,
     `<meta name="twitter:description" content="${escapeAttr(site.seo.ogDescription)}">`,
     `<meta name="twitter:image" content="${escapeAttr(ogImageUrl)}">`,
-    `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`,
+    `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, '\\u003c')}</script>`,
   ]
     .filter(Boolean)
     .join('\n    ');
