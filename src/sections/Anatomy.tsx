@@ -7,7 +7,7 @@ import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { ScrollTrigger, gsap, unveil, useGSAP, whenNear } from '../motion/motion';
 import { flickerFault } from '../motion/flicker';
 import type { CurrentPathHandle, SparksHandle } from '../motion/types';
-import { Diorama } from './anatomy/Diorama';
+import { Diorama } from './anatomy/DioramaScene';
 import { PART_COUNT, getDiorama } from './anatomy/diorama';
 
 const BEATS = ['fault', 'fix', 'flow'] as const;
